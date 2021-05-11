@@ -1,6 +1,7 @@
 htcondor
 gitpython
 tabulate
+dataclasses
 pycairo==1.19.1
 numba==0.50.1
 uproot-methods<0.9.0

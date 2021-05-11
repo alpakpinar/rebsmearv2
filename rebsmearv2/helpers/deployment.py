@@ -2,13 +2,15 @@
 
 import tarfile
 import os
+from rebsmearv2.helpers.paths import rebsmear_path
 
 
 def get_repo_files():
     '''Returns a list of tracked files in the rebsmear repo'''
     import git
 
-    repo = git.Repo(os.path.abspath('.'))
+    print(rebsmear_path('..'))
+    repo = git.Repo(rebsmear_path('..'))
 
     to_iterate = [repo.tree()]
     to_add = []
@@ -32,7 +34,7 @@ def pack_repo(path_to_gridpack, overwrite=False):
     for f in files:
         tar.add(
             name=f,
-            arcname=f.replace(os.path.abspath(os.path.abspath('.')),'rebsmear'),
+            arcname=f.replace(os.path.abspath(rebsmear_path('..')),'rebsmearv2'),
             exclude=lambda x: ('tgz' in x or 'submission' in x)
             )
     tar.close()

@@ -2,6 +2,7 @@
 
 import os
 import re
+import math
 import time
 import argparse
 import multiprocessing
@@ -13,6 +14,7 @@ r.gSystem.Load('libRooFit')
 from datetime import date
 from array import array
 from rebsmearv2.rebalance.objects import Jet, RebalanceWSFactory, JERLookup
+from rebsmearv2.helpers.paths import rebsmear_path
 
 pjoin = os.path.join
 
@@ -23,7 +25,7 @@ class RebalanceExecutor():
     INPUT: Takes the set of files to be processed.
     OUTPUT: Produces ROOT files with rebalanced event information saved.
     '''
-    def __init__(self, files, dataset, treename, test=False, jersource='jer_mc'):
+    def __init__(self, files, dataset, treename, test=False, jersource='jer_mc', eventfrac=1e-3):
         self.files = files
         self.dataset = dataset
         self.treename = treename
@@ -31,6 +33,8 @@ class RebalanceExecutor():
         self.test = test
         # Set up the JER source: "jer_data" or "jer_mc"
         self.jersource = jersource
+        # Event fraction: Process X% of the events in the set of files, defaults to 0.1%
+        self.eventfrac = eventfrac
 
     def _read_jets(self, event, tree, ptmin=30, absetamax=5.0):
         n = event
@@ -58,13 +62,7 @@ class RebalanceExecutor():
         treename = filepath.split('/')[-1].replace('.root','')
 
         # Set up output ROOT file
-        outputrootdir = pjoin(self.outdir, datasetname)
-        try:
-            os.makedirs(outputrootdir)
-        except FileExistsError:
-            pass
-        
-        f = r.TFile(pjoin(outputrootdir, f"rebalanced_{treename}.root"),"RECREATE")
+        f = r.TFile(pjoin(self.outdir, f"{datasetname}_rebalanced_{treename}.root"),"RECREATE")
     
         # Set up the output tree to be saved
         nJetMax = 15
@@ -88,7 +86,11 @@ class RebalanceExecutor():
         outtree.Branch('HT', ht, 'HT/F')
 
         # Loop over the events: Rebalance
-        for event in range(numevents):
+        num_events_to_run = math.ceil(self.eventfrac * numevents) 
+        print('STARTING REBALANCING')
+        print(f'Total number of events: {numevents}')
+        print(f'Number of events to run on: {num_events_to_run}')
+        for event in range(num_events_to_run):
             # In test mode, only run on first 10 events
             if self.test and event == 10:
                 break
@@ -98,7 +100,7 @@ class RebalanceExecutor():
             # JER source, initiate the object and specify the JER input
             jer_evaluator = JERLookup()
 
-            jer_evaluator.from_th1("./input/jer.root", self.jersource)
+            jer_evaluator.from_th1(rebsmear_path("./input/jer.root"), self.jersource)
             
             rbwsfac.set_jer_evaluator(jer_evaluator)
             try:

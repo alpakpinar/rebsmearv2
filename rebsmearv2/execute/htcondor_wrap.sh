@@ -11,6 +11,10 @@ python --version
 
 ARGS=("$@")
 
+# Extract the repo from the gridpack
+tar -xvf *tgz
+rm -rvf *tgz
+
 # Virtual environment setup
 ENVNAME="bucoffeaenv"
 python -m venv ${ENVNAME}
@@ -26,6 +30,10 @@ echo "Setup done: $(date)"
 time rebexec ${ARGS[@]}
 echo "Run done: $(date)"
 
-echo "Cleaning up."
+echo "Directory content---"
+ls -lah .
+echo "===================="
+
+# echo "Cleaning up."
 # rm -vf *.root
-echo "End: $(date)"
+# echo "End: $(date)"

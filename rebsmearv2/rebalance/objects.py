@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import ROOT as r
 r.gSystem.Load('libRooFit')
 import numpy as np
+from rebsmearv2.helpers.paths import rebsmear_path
 
 @dataclass(frozen=True)
 class Jet():
@@ -351,7 +352,7 @@ class RebalanceWSFactory(NamingMixin):
         return 'gen_htmiss_prior_slope'
 
     def _get_gen_htmiss_prior_file(self):
-        rfile = './input/htmiss_prior.root'
+        rfile = rebsmear_path('./input/htmiss_prior.root')
         return r.TFile(rfile)
 
     def _name_ht_bin(self, gen_ht):

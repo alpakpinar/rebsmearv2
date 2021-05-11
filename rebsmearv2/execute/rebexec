@@ -12,7 +12,7 @@ from rebsmearv2.helpers.condor import condor_submit
 from rebsmearv2.helpers.git import git_rev_parse, git_diff
 from rebsmearv2.helpers.dataset import files_from_eos
 from rebsmearv2.helpers.deployment import pack_repo
-from rebsmearv2.helpers.paths import xrootd_format
+from rebsmearv2.helpers.paths import xrootd_format, rebsmear_path
 
 from rebsmearv2.rebalance.rebalancer import RebalanceExecutor
 
@@ -99,7 +99,7 @@ def do_worker(args):
     print(f"Running over {ndatasets} datasets with a total of {nfiles} files.")
 
     e = RebalanceExecutor(files=files, 
-            dataset=dataset, 
+            dataset=args.dataset, 
             treename='Events',
             jersource=get_jer_source(args.dataset)
         ) 
@@ -140,7 +140,7 @@ def do_submit(args):
     gridpack_exists = os.path.exists(gridpack_path)
     if (not gridpack_exists):
         pack_repo(gridpack_path)
-    input_files.append(gridpack_path)
+    input_files.append(os.path.abspath(gridpack_path))
 
     for dataset, files in dataset_files.items():
         print(f"Writing submission files for dataset: {dataset}.")
@@ -156,7 +156,6 @@ def do_submit(args):
 
             # Job file creation
             arguments = [
-                args.processor,
                 f'--outpath .',
                 f'--jobs {args.jobs}',
                 f'--tree {args.tree}',
@@ -167,13 +166,13 @@ def do_submit(args):
             ]
 
             job_input_files = input_files + [
-                os.path.abspath(tmpfile),
+                os.path.abspath(tmpfile)
             ]
 
             chunkname = f'{dataset}_{ichunk:03d}of{len(chunks):03d}'
             submission_settings = {
                 "Initialdir" : outdir,
-                "executable": "execute/htcondor_wrap.sh",
+                "executable": rebsmear_path("execute/htcondor_wrap.sh"),
                 "should_transfer_files" : "YES",
                 "when_to_transfer_output" : "ON_EXIT",
                 "transfer_input_files" : ", ".join(job_input_files),
@@ -185,7 +184,7 @@ def do_submit(args):
                 "request_cpus" : str(args.jobs),
                 "request_memory" : str(args.memory if args.memory else args.jobs*2100),
                 "+MaxRuntime" : f"{60*60*12}",
-                "on_exit_remove" : "((ExitBySignal == False) && (ExitCode == 0)) || (NumJobStarts >= 2)",
+                # "on_exit_remove" : "((ExitBySignal == False) && (ExitCode == 0)) || (NumJobStarts >= 2)",
             }
 
             sub = htcondor.Submit(submission_settings)
