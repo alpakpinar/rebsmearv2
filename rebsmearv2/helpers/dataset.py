@@ -8,6 +8,9 @@ from pprint import pprint
 
 pjoin = os.path.join
 
+def is_data(datasetname):
+    return 'JetHT' in datasetname
+
 def eosfind(path):
     cmd = ['eos', 'root://cmseos.fnal.gov/', 'find',  '--size', path]
     return subprocess.check_output(cmd).decode('utf-8')

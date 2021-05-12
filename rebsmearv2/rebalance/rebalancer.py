@@ -15,6 +15,7 @@ from datetime import date
 from array import array
 from rebsmearv2.rebalance.objects import Jet, RebalanceWSFactory, JERLookup
 from rebsmearv2.helpers.paths import rebsmear_path
+from rebsmearv2.helpers.dataset import is_data
 
 pjoin = os.path.join
 
@@ -44,6 +45,11 @@ class RebalanceExecutor():
         # Return jet collection with pt/eta cuts (if provided)
         return [Jet(pt=ipt, phi=iphi, eta=ieta) for ipt, iphi, ieta in zip(pt, phi, eta) if ( (ipt > ptmin) and (np.abs(ieta) < absetamax) ) ]
 
+    def _read_sumw_sumw2(self, infile):
+        '''Returns sumw and sumw2 for MC, to be used for scaling during post-processing.'''
+        t = infile['Runs']
+        return t['genEventSumw'].array()[0], t['genEventSumw2'].array()[0] 
+
     def set_output_dir(self, outdir):
         self.outdir = outdir
         try:
@@ -64,6 +70,18 @@ class RebalanceExecutor():
         # Set up output ROOT file
         f = r.TFile(pjoin(self.outdir, f"{datasetname}_rebalanced_{treename}.root"),"RECREATE")
     
+        if not is_data(self.dataset):
+            sumw, sumw2 = self._read_sumw_sumw2(infile)
+
+            # "Runs" tree to save sumw and sumw2
+            t_runs = r.TTree('Runs', 'Runs')
+            arr_sumw = array('f', [sumw])
+            arr_sumw2 = array('f', [sumw2])
+            t_runs.Branch('sumw', arr_sumw, 'sumw/F')
+            t_runs.Branch('sumw2', arr_sumw2, 'sumw2/F')
+            t_runs.Fill()
+            t_runs.Write()
+
         # Set up the output tree to be saved
         nJetMax = 15
         outtree = r.TTree('Events','Events')
