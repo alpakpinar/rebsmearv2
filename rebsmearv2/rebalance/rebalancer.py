@@ -68,7 +68,8 @@ class RebalanceExecutor():
         treename = filepath.split('/')[-1].replace('.root','')
 
         # Set up output ROOT file
-        f = r.TFile(pjoin(self.outdir, f"{datasetname}_rebalanced_{treename}.root"),"RECREATE")
+        outpath = pjoin(self.outdir, f"{datasetname}_rebalanced_{treename}.root")
+        f = r.TFile(outpath,"RECREATE")
     
         if not is_data(self.dataset):
             sumw, sumw2 = self._read_sumw_sumw2(infile)
@@ -157,9 +158,16 @@ class RebalanceExecutor():
         f.cd()
         outtree.Write()
 
+        return outpath
+
     def process(self):
         '''Process the list of files.'''
+        output_files = []
         for idx, filepath in enumerate(self.files):
             if self.test and idx == 5:
                 break
-            self.process_file(filepath)
+            output_files.append(
+                self.process_file(filepath)
+            )
+        # This returns a set of output files to be used in the next step.
+        return output_files

@@ -15,6 +15,7 @@ from rebsmearv2.helpers.deployment import pack_repo
 from rebsmearv2.helpers.paths import xrootd_format, rebsmear_path
 
 from rebsmearv2.rebalance.rebalancer import RebalanceExecutor
+from rebsmearv2.postprocess.postProcessor import PostProcExecutor
 
 pjoin = os.path.join
 
@@ -66,6 +67,37 @@ def chunk_by_files(items, nchunk):
         chunks[i % nchunk].append(items[i])
     return chunks
 
+def run_rebsmear_job(files, dataset, treename='Events', test=False, jersource=None, outpath=None):
+    '''
+    Wrapper function to run a complete rebalance and smear job.
+    Goes through the following steps:
+    1. Rebalancing
+    2. Smear (Yet to come!)
+    3. Accumulate into histograms
+    4. Make plots (Yet to come!)
+    '''
+    # Step 1: Rebalancing
+    e = RebalanceExecutor(files=files, 
+            dataset=dataset, 
+            treename='Events', 
+            test=test,
+            jersource=get_jer_source(dataset)
+        )
+        
+    # Set output path to save files
+    e.set_output_dir(outpath)
+    outfiles = e.process()
+
+    # Step 2: Smearing
+    
+    # Step 3: Accumulating
+    pprint(outfiles)
+    ppexec = PostProcExecutor(files=outfiles)
+    ppexec.set_output_dir(outpath)
+    ppexec.analyze_files()
+
+    # Step 4: Plotting
+
 def do_run(args):
     """Run the R&S locally."""
     # Run over all files associated to dataset
@@ -76,16 +108,14 @@ def do_run(args):
     print(f"Running over {ndatasets} datasets with a total of {nfiles} files.")
 
     for dataset, files in fileset.items():
-        e = RebalanceExecutor(files=files, 
-                dataset=dataset, 
-                treename='Events', 
-                test=args.testrun,
-                jersource=get_jer_source(args.dataset)
-            )
-        
-        # Set output path to save files
-        e.set_output_dir(args.outpath)
-        e.process()
+        run_rebsmear_job(
+            files=files,
+            dataset=dataset,
+            treename='Events',
+            test=args.testrun,
+            jersource=get_jer_source(args.dataset),
+            outpath=args.outpath
+        )
 
 def do_worker(args):
     '''Run the R&S on a worker node.'''
@@ -98,15 +128,13 @@ def do_worker(args):
     nfiles = sum([len(x) for x in fileset.values()])
     print(f"Running over {ndatasets} datasets with a total of {nfiles} files.")
 
-    e = RebalanceExecutor(files=files, 
-            dataset=args.dataset, 
-            treename='Events',
-            jersource=get_jer_source(args.dataset)
-        ) 
-
-    # Set output path to save files
-    e.set_output_dir(args.outpath)
-    e.process()
+    run_rebsmear_job(
+        files=files,
+        dataset=args.dataset,
+        treename='Events',
+        jersource=get_jer_source(args.dataset),
+        outpath=args.outpath
+    )
 
 def do_submit(args):
     '''Handle HTcondor submission.'''
