@@ -11,6 +11,12 @@ pjoin = os.path.join
 def is_data(datasetname):
     return 'JetHT' in datasetname
 
+def extract_year(dataset):
+    for x in [6,7,8]:
+        if f"201{x}" in dataset:
+            return 2010+x
+    raise RuntimeError("Could not determine dataset year")
+
 def eosfind(path):
     cmd = ['eos', 'root://cmseos.fnal.gov/', 'find',  '--size', path]
     return subprocess.check_output(cmd).decode('utf-8')
