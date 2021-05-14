@@ -9,7 +9,6 @@ def get_repo_files():
     '''Returns a list of tracked files in the rebsmear repo'''
     import git
 
-    print(rebsmear_path('..'))
     repo = git.Repo(rebsmear_path('..'))
 
     to_iterate = [repo.tree()]
