@@ -34,7 +34,7 @@ def parse_cli():
     args = parser.parse_args()
     return args
 
-def make_plot(acc, distribution, outdir='./output', dataset='QCD_HT', years=[2017,2018]):
+def make_plot(acc, distribution, outdir='./output', region='sr_vbf', dataset='QCD_HT', years=[2017,2018]):
     acc.load(distribution)
     h = acc[distribution]
 
@@ -47,6 +47,8 @@ def make_plot(acc, distribution, outdir='./output', dataset='QCD_HT', years=[201
         h = h.rebin(new_ax.name, new_ax)
     except KeyError:
         pass
+
+    h = h.integrate('region', region)
 
     for year in years:
         fig, ax = plt.subplots()

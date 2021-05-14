@@ -15,6 +15,7 @@ from coffea.util import save
 from coffea import hist
 from rebsmearv2.helpers.paths import rebsmear_path
 from rebsmearv2.helpers.dataset import is_data
+from rebsmearv2.helpers.helpers import dphi
 from pprint import pprint
 
 pjoin = os.path.join
@@ -25,6 +26,7 @@ Hist = hist.Hist
 
 def get_accumulator():
     dataset_ax = Cat("dataset", "Primary dataset")
+    region_ax = Cat("region", "Selection region")
 
     mjj_ax = Bin("mjj", r"$M_{jj}$ (GeV)", 150, 0, 7500)
     jet_pt_ax = Bin("jetpt", r"$p_{T}$ (GeV)", 100, 0, 1000)
@@ -38,23 +40,24 @@ def get_accumulator():
     items['sumw'] = processor.defaultdict_accumulator(float)
     items['sumw2'] = processor.defaultdict_accumulator(float)
 
-    items["ak4_pt0"] = Hist("Counts", dataset_ax, jet_pt_ax)
-    items["ak4_eta0"] = Hist("Counts", dataset_ax, jet_eta_ax)
-    items["ak4_phi0"] = Hist("Counts", dataset_ax, jet_phi_ax)
+    items["ak4_pt0"] = Hist("Counts", dataset_ax, region_ax, jet_pt_ax)
+    items["ak4_eta0"] = Hist("Counts", dataset_ax, region_ax, jet_eta_ax)
+    items["ak4_phi0"] = Hist("Counts", dataset_ax, region_ax, jet_phi_ax)
 
-    items["ak4_pt1"] = Hist("Counts", dataset_ax, jet_pt_ax)
-    items["ak4_eta1"] = Hist("Counts", dataset_ax, jet_eta_ax)
-    items["ak4_phi1"] = Hist("Counts", dataset_ax, jet_phi_ax)
+    items["ak4_pt1"] = Hist("Counts", dataset_ax, region_ax, jet_pt_ax)
+    items["ak4_eta1"] = Hist("Counts", dataset_ax, region_ax, jet_eta_ax)
+    items["ak4_phi1"] = Hist("Counts", dataset_ax, region_ax, jet_phi_ax)
 
-    items["mjj"] = Hist("Counts", dataset_ax, mjj_ax)
-    items["ht"] = Hist("Counts", dataset_ax, ht_ax)
-    items["htmiss"] = Hist("Counts", dataset_ax, ht_ax)
+    items["mjj"] = Hist("Counts", dataset_ax, region_ax, mjj_ax)
+    items["ht"] = Hist("Counts", dataset_ax, region_ax, ht_ax)
+    items["htmiss"] = Hist("Counts", dataset_ax, region_ax, ht_ax)
 
     return processor.dict_accumulator(items)
 
 class RSPostProcessor(processor.ProcessorABC):
     def __init__(self):
         self._accumulator = get_accumulator()
+        self._setup_regions()
 
     @property
     def accumulator(self):
@@ -75,6 +78,18 @@ class RSPostProcessor(processor.ProcessorABC):
 
         return ak4, htmiss, ht
 
+    def _setup_regions(self):
+        '''Set up selection regions.'''
+        self.regions = {}
+        self.regions['sr_vbf'] = [
+            'mjj',
+            'detajj',
+            'dphijj',
+            'hemisphere',
+            'leadak4_pt_eta',
+            'trailak4_pt_eta',
+        ]
+
     def process(self,df):
         '''Fill and save histograms.'''
         dataset = df['dataset']
@@ -85,31 +100,52 @@ class RSPostProcessor(processor.ProcessorABC):
         diak4 = ak4[:,:2].distincts()
 
         df['mjj'] = diak4.mass.max()
+        df['dphijj'] = dphi(diak4.i0.phi.min(), diak4.i1.phi.max())
+        df['detajj'] = np.abs(diak4.i0.eta - diak4.i1.eta).max()
+
+        selection = processor.PackedSelection()
+        pass_all = np.ones(df.size)==1
+        selection.add('inclusive', pass_all)
+        
+        leadak4_pt_eta = (diak4.i0.pt > 80) & (np.abs(diak4.i0.eta) < 4.7)
+        trailak4_pt_eta = (diak4.i1.pt > 40) & (np.abs(diak4.i1.eta) < 4.7)
+        hemisphere = (diak4.i0.eta * diak4.i1.eta < 0).any()
+
+        selection.add('mjj', df['mjj'] > 200)
+        selection.add('detajj', df['detajj'] > 1.)
+        selection.add('dphijj', df['dphijj'] < 1.5)
+        selection.add('hemisphere', hemisphere)
+        selection.add('leadak4_pt_eta', leadak4_pt_eta.any())
+        selection.add('trailak4_pt_eta', trailak4_pt_eta.any())
 
         output = self.accumulator.identity()
         if not df['is_data']:
             output['sumw'][dataset] +=  df['sumw']
             output['sumw2'][dataset] +=  df['sumw2']
         
-        def ezfill(name, **kwargs):
-                """Helper function to make filling easier."""
-                output[name].fill(
-                                  dataset=dataset,
-                                  **kwargs
-                                  )
+        for region, cuts in self.regions.items():
+            mask = selection.all(*cuts)
 
-        # Fill histograms
-        ezfill('ak4_pt0',     jetpt=diak4.i0.pt.flatten())
-        ezfill('ak4_eta0',    jeteta=diak4.i0.eta.flatten())
-        ezfill('ak4_phi0',    jetphi=diak4.i0.phi.flatten())
+            def ezfill(name, **kwargs):
+                    """Helper function to make filling easier."""
+                    output[name].fill(
+                                    dataset=dataset,
+                                    region=region,
+                                    **kwargs
+                                    )
 
-        ezfill('ak4_pt1',     jetpt=diak4.i1.pt.flatten())
-        ezfill('ak4_eta1',    jeteta=diak4.i1.eta.flatten())
-        ezfill('ak4_phi1',    jetphi=diak4.i1.phi.flatten())
+            # Fill histograms
+            ezfill('ak4_pt0',     jetpt=diak4.i0.pt[mask].flatten())
+            ezfill('ak4_eta0',    jeteta=diak4.i0.eta[mask].flatten())
+            ezfill('ak4_phi0',    jetphi=diak4.i0.phi[mask].flatten())
 
-        ezfill('mjj',    mjj=df['mjj'])
-        ezfill('ht',     ht=ht)
-        ezfill('htmiss',     ht=htmiss)
+            ezfill('ak4_pt1',     jetpt=diak4.i1.pt[mask].flatten())
+            ezfill('ak4_eta1',    jeteta=diak4.i1.eta[mask].flatten())
+            ezfill('ak4_phi1',    jetphi=diak4.i1.phi[mask].flatten())
+
+            ezfill('mjj',      mjj=df['mjj'][mask])
+            ezfill('ht',       ht=ht[mask])
+            ezfill('htmiss',   ht=htmiss[mask])
 
         return output
 
