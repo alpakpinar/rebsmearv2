@@ -4,7 +4,7 @@ r.gSystem.Load('libRooFit')
 import numpy as np
 from rebsmearv2.helpers.paths import rebsmear_path
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class Jet():
     pt: float
     eta: float
@@ -18,6 +18,12 @@ class Jet():
         object.__setattr__(self, 'py', np.sin(self.phi) * self.pt)
         object.__setattr__(self, 'pz', np.sinh(self.eta) * self.pt)
 
+    def set_pt(self, ptvalue):
+        self.pt = ptvalue
+        # Update the Cartesian components of the momenta after the transverse momentum gets an update
+        self.px = np.cos(self.phi) * ptvalue
+        self.py = np.sin(self.phi) * ptvalue
+        self.pz = np.sinh(self.eta) * ptvalue
 
 class NamingMixin():
 
