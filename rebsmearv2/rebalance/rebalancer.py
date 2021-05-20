@@ -164,7 +164,7 @@ class RebalanceExecutor():
         '''Process the list of files.'''
         output_files = []
         for idx, filepath in enumerate(self.files):
-            if self.test and idx == 5:
+            if self.test and idx == 1:
                 break
             output_files.append(
                 self.process_file(filepath)

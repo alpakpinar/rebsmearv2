@@ -16,7 +16,7 @@ from rebsmearv2.helpers.deployment import pack_repo
 from rebsmearv2.helpers.paths import xrootd_format, rebsmear_path
 
 from rebsmearv2.rebalance.rebalancer import RebalanceExecutor
-from rebsmearv2.smear.smearer import SmearingExecutor
+from rebsmearv2.smear.smearer import SmearExecutor
 from rebsmearv2.postprocess.postProcessor import PostProcExecutor
 
 pjoin = os.path.join
@@ -74,9 +74,8 @@ def run_rebsmear_job(files, dataset, treename='Events', test=False, jersource=No
     Wrapper function to run a complete rebalance and smear job.
     Goes through the following steps:
     1. Rebalancing
-    2. Smear
-    3. Accumulate into histograms
-    4. Make plots (Yet to come!)
+    2. Apply smearing + accumulate to histograms
+    3. Make plots (Yet to come!)
     '''
     jersource = get_jer_source(dataset)
     # Step 1: Rebalancing
@@ -91,24 +90,20 @@ def run_rebsmear_job(files, dataset, treename='Events', test=False, jersource=No
     e.set_output_dir(outpath)
     outfiles = e.process()
 
-    # Step 2: Smearing
-    se = SmearingExecutor(
-        files=outfiles,
-        dataset=dataset, 
-        treename='Events',
-        jersource=jersource
-    )
+    # Step 2: Smearing + accumulating
+    se = SmearExecutor(files=outfiles)
 
     # Set output path to save files
     se.set_output_dir(outpath)
-    outfiles = se.process()
+    se.analyze_files()
 
     # Step 3: Accumulating
-    ppexec = PostProcExecutor(files=outfiles)
-    ppexec.set_output_dir(outpath)
-    ppexec.analyze_files()
+    # ppexec = PostProcExecutor(files=outfiles)
+    # ppexec.set_output_dir(outpath)
+    # ppexec.analyze_files()
 
-    # Step 4: Plotting
+    # Step 3: Plotting
+    # To come?
 
 def do_run(args):
     """Run the R&S locally."""
