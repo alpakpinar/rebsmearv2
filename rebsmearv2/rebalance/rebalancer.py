@@ -45,6 +45,107 @@ class RebalanceExecutor():
         # Return jet collection with pt/eta cuts (if provided)
         return [Jet(pt=ipt, phi=iphi, eta=ieta) for ipt, iphi, ieta in zip(pt, phi, eta) if ( (ipt > ptmin) and (np.abs(ieta) < absetamax) ) ]
 
+    def _event_has_electron(self, event, tree):
+        '''Returns whether an event contains a electron.'''
+        n = event
+        nelectron = tree['nElectron'].array(entrystart=n, entrystop=n+1)[0]
+        if nelectron == 0:
+            return False
+        
+        # Check for good quality electrons
+        electron_pt = tree['Electron_pt'].array(entrystart=n, entrystop=n+1)[0]
+        electron_eta = tree['Electron_eta'].array(entrystart=n, entrystop=n+1)[0]
+        electron_detasc = tree['Electron_deltaEtaSC'].array(entrystart=n, entrystop=n+1)[0]
+        electron_cutBased = tree['Electron_cutBased'].array(entrystart=n, entrystop=n+1)[0]
+
+        def pass_cut(pt, eta, detasc, cutBased):
+            return (np.abs(eta + detasc) < 2.5) and (pt > 10) and cutBased >= 1
+
+        for info in zip(electron_pt, electron_eta, electron_detasc, electron_cutBased):
+            if pass_cut(*info):
+                return True             
+
+        return False
+
+    def _event_has_muon(self, event, tree):
+        '''Returns whether an event contains a muon.'''
+        n = event
+        nmuon = tree['nMuon'].array(entrystart=n, entrystop=n+1)[0]
+        if nmuon == 0:
+            return False
+
+        # Check for good quality muons
+        muon_pt = tree['Muon_pt'].array(entrystart=n, entrystop=n+1)[0]
+        muon_eta = tree['Muon_eta'].array(entrystart=n, entrystop=n+1)[0]
+        muon_iso = tree['Muon_pfRelIso04_all'].array(entrystart=n, entrystop=n+1)[0]
+        muon_looseId = tree['Muon_looseId'].array(entrystart=n, entrystop=n+1)[0]
+
+        def pass_cut(pt, eta, iso, looseid):
+            return (iso < 0.15) and (np.abs(eta) < 2.4) and (pt > 20) and looseid
+
+        for info in zip(muon_pt, muon_eta, muon_iso, muon_looseId):
+            if pass_cut(*info):
+                return True             
+
+        return False
+
+    def _event_has_photon(self, event, tree):
+        '''Returns whether an event contains a photon.'''
+        n = event
+        nphoton = tree['nPhoton'].array(entrystart=n, entrystop=n+1)[0]
+        if nphoton == 0:
+            return False
+
+        # Check for good quality photons
+        photon_pt = tree['Photon_pt'].array(entrystart=n, entrystop=n+1)[0]
+        photon_eta = tree['Photon_eta'].array(entrystart=n, entrystop=n+1)[0]
+        photon_cutBasedId = tree['Photon_cutBased'].array(entrystart=n, entrystop=n+1)[0]
+        photon_electronVeto = tree['Photon_electronVeto'].array(entrystart=n, entrystop=n+1)[0]
+
+        def pass_cut(pt, eta, cutBasedId, eleVeto):
+            return (pt > 15) and (np.abs(eta) < 2.5) and cutBasedId >= 1 and eleVeto
+
+        for info in zip(photon_pt, photon_eta, photon_cutBasedId, photon_electronVeto):
+            if pass_cut(*info):
+                return True
+
+        return False
+
+    def _event_has_tau(self, event, tree):
+        '''Returns whether an event contains a tau.'''
+        n = event
+        ntau = tree['nTau'].array(entrystart=n, entrystop=n+1)[0]
+        if ntau == 0:
+            return False
+
+        # Check for good quality taus
+        tau_pt = tree['Tau_pt'].array(entrystart=n, entrystop=n+1)[0]
+        tau_eta = tree['Tau_eta'].array(entrystart=n, entrystop=n+1)[0]
+        tau_id = tree['Tau_idDecayModeNewDMs'].array(entrystart=n, entrystop=n+1)[0]
+        tau_iso = tree['Tau_idDeepTau2017v2p1VSjet'].array(entrystart=n, entrystop=n+1)[0]
+        
+        def pass_cut(pt, eta, id, iso):
+            return (pt > 20) and (np.abs(eta) < 2.3) and id and (iso & 2 == 2)
+
+        for info in zip(tau_pt, tau_eta, tau_id, tau_iso):
+            if pass_cut(*info):
+                return True
+
+        return False
+
+    def _event_contains_lepton(self, event, tree):
+        '''Returns whether an event contains a lepton or photon.'''
+        if self._event_has_muon(event, tree):
+            return True
+        if self._event_has_photon(event, tree):
+            return True
+        if self._event_has_tau(event, tree):
+            return True
+        if self._event_has_electron(event, tree):
+            return True
+
+        return False
+
     def _read_sumw_sumw2(self, infile):
         '''Returns sumw and sumw2 for MC, to be used for scaling during post-processing.'''
         t = infile['Runs']
@@ -114,6 +215,11 @@ class RebalanceExecutor():
             if self.test and event == 10:
                 break
             
+            # Check if the event contains a lepton or a photon, if so, veto the event
+            event_contains_lepton = self._event_contains_lepton(event, tree)
+            if event_contains_lepton:
+                continue
+
             jets = self._read_jets(event, tree)
             rbwsfac = RebalanceWSFactory(jets)
             # JER source, initiate the object and specify the JER input
