@@ -57,8 +57,10 @@ def make_plot(acc, distribution, outdir='./output', region='sr_vbf', dataset='QC
         hist.plot1d(_h, ax=ax, binwnorm=1, overlay='dataset')
     
         ax.set_yscale('log')
-        ax.set_ylim(1e-2,1e10)
-    
+        ax.set_ylim(1e-4,1e8)
+        ax.set_ylabel('Events / GeV')
+        ax.yaxis.set_ticks_position('both')
+
         ax.text(0.,1.,year,
             fontsize=14,
             ha='left',
@@ -104,6 +106,7 @@ def main():
                 outdir=outdir, 
                 distribution=distribution,
                 region=region,
+                dataset='JetHT',
                 years=args.years
             )
 
