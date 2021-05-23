@@ -9,6 +9,10 @@ class Jet():
     pt: float
     eta: float
     phi: float
+    jetid: float
+    sieie: float
+    sipip: float
+    hfcss: float
     px: float = 0
     py: float = 0
     pz: float = 0

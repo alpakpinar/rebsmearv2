@@ -16,6 +16,7 @@ from array import array
 from rebsmearv2.rebalance.objects import Jet, RebalanceWSFactory, JERLookup
 from rebsmearv2.helpers.paths import rebsmear_path
 from rebsmearv2.helpers.dataset import is_data
+from pprint import pprint
 
 pjoin = os.path.join
 
@@ -37,13 +38,58 @@ class RebalanceExecutor():
         # Event fraction: Process X% of the events in the set of files, defaults to 0.1%
         self.eventfrac = eventfrac
 
+    def _jet_preselection(self, jet, ptmin=30, absetamax=5.0):
+        '''Pre-selection for jets. Includes loose ID requirement (with minimum pt requirement) + HF shape cuts.'''
+        abseta = np.abs(jet.eta)
+        # Loose jet ID
+        if not (jet.jetid&2 == 2):
+            return False
+
+        if not (jet.pt > ptmin and abseta < absetamax):
+            return False
+
+        # HF shape cuts
+        if not (jet.hfcss < 3):
+            return False
+
+        if (abseta > 2.99) and (abseta < 4.0):
+            if not (jet.sieie - jet.sipip < 0.02):
+                 return False
+            if ((jet.sieie < 0.02) and (jet.sipip < 0.02)):
+                return False
+
+        elif (abseta >= 4.0):  
+            if not ((jet.sieie < 0.1) and (jet.sipip > 0.02)):
+                return False
+
+        return True
+
     def _read_jets(self, event, tree, ptmin=30, absetamax=5.0):
         n = event
 
         pt, phi, eta = (tree[f'Jet_{x}'].array(entrystart=n, entrystop=n+1)[0] for x in ['pt','phi','eta'])
         
-        # Return jet collection with pt/eta cuts (if provided)
-        return [Jet(pt=ipt, phi=iphi, eta=ieta) for ipt, iphi, ieta in zip(pt, phi, eta) if ( (ipt > ptmin) and (np.abs(ieta) < absetamax) ) ]
+        jetid = tree['Jet_jetId'].array(entrystart=n, entrystop=n+1)[0]
+
+        sieie, sipip, hfcss = (tree[f'Jet_{x}'].array(entrystart=n, entrystop=n+1)[0] for x in ['hfsigmaEtaEta', 'hfsigmaPhiPhi', 'hfcentralEtaStripSize'])
+
+        jets = []
+        for idx in range(len(pt)):
+            j = Jet(
+                pt=pt[idx],
+                phi=phi[idx],
+                eta=eta[idx],
+                jetid=jetid[idx],
+                sieie=sieie[idx],
+                sipip=sipip[idx],
+                hfcss=hfcss[idx],
+            )
+            if not self._jet_preselection(j):
+                continue
+
+            jets.append(j)
+
+        return jets
 
     def _event_has_electron(self, event, tree):
         '''Returns whether an event contains a electron.'''
@@ -216,8 +262,7 @@ class RebalanceExecutor():
                 break
             
             # Check if the event contains a lepton or a photon, if so, veto the event
-            event_contains_lepton = self._event_contains_lepton(event, tree)
-            if event_contains_lepton:
+            if self._event_contains_lepton(event, tree):
                 continue
 
             jets = self._read_jets(event, tree)
