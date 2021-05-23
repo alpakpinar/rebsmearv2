@@ -31,6 +31,7 @@ def parse_cli():
     parser = argparse.ArgumentParser()
     parser.add_argument('inpath', help='Path to merged coffea files.')
     parser.add_argument('--years', nargs='*', type=int, default=[2017,2018], help='Years to run on, default is both 17 and 18.')
+    parser.add_argument('--region', default='.*', help='Regions to run on.')
     args = parser.parse_args()
     return args
 
@@ -65,7 +66,7 @@ def make_plot(acc, distribution, outdir='./output', region='sr_vbf', dataset='QC
             transform=ax.transAxes
         )
 
-        outpath = pjoin(outdir, f'{dataset}_{year}_{distribution}.pdf')
+        outpath = pjoin(outdir, f'{dataset}_{year}_{region}_{distribution}.pdf')
         fig.savefig(outpath)
         plt.close(fig)
         print(f'File saved: {outpath}')
@@ -89,12 +90,22 @@ def main():
         os.makedirs(outdir)
 
     distributions = BINNINGS.keys()
-    for distribution in distributions:
-        make_plot(acc, 
-            outdir=outdir, 
-            distribution=distribution, 
-            years=args.years
-        )
+
+    regions = [
+        'inclusive',
+        'sr_vbf'
+    ]
+    
+    for region in regions:
+        if not re.match(args.region, region):
+            continue
+        for distribution in distributions:
+            make_plot(acc, 
+                outdir=outdir, 
+                distribution=distribution,
+                region=region,
+                years=args.years
+            )
 
 if __name__ == '__main__':
     main()

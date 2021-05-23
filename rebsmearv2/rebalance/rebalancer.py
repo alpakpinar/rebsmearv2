@@ -27,7 +27,7 @@ class RebalanceExecutor():
     INPUT: Takes the set of files to be processed.
     OUTPUT: Produces ROOT files with rebalanced event information saved.
     '''
-    def __init__(self, files, dataset, treename, test=False, jersource='jer_mc', eventfrac=1e-3):
+    def __init__(self, files, dataset, treename, test=False, jersource='jer_mc', eventfrac=1e-2):
         self.files = files
         self.dataset = dataset
         self.treename = treename
@@ -52,13 +52,13 @@ class RebalanceExecutor():
         if not (jet.hfcss < 3):
             return False
 
-        if (abseta > 2.99) and (abseta < 4.0):
+        if (abseta > 2.99) and (abseta < 4.0) and (jet.pt > 80):
             if not (jet.sieie - jet.sipip < 0.02):
-                 return False
+                return False
             if ((jet.sieie < 0.02) and (jet.sipip < 0.02)):
                 return False
 
-        elif (abseta >= 4.0):  
+        elif (abseta >= 4.0) and (jet.pt > 80):  
             if not ((jet.sieie < 0.1) and (jet.sipip > 0.02)):
                 return False
 

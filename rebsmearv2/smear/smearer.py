@@ -110,7 +110,9 @@ class CoffeaSmearer(processor.ProcessorABC):
     def _setup_regions(self):
         '''Set up selection regions.'''
         self.regions = {}
+        self.regions['inclusive'] = ['inclusive']
         self.regions['sr_vbf'] = [
+            'inclusive',
             'mjj',
             'detajj',
             'dphijj',
