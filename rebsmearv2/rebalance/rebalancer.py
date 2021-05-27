@@ -27,7 +27,7 @@ class RebalanceExecutor():
     INPUT: Takes the set of files to be processed.
     OUTPUT: Produces ROOT files with rebalanced event information saved.
     '''
-    def __init__(self, files, dataset, treename, test=False, jersource='jer_mc', eventfrac=1e-3):
+    def __init__(self, files, dataset, treename, test=False, jersource='jer_mc', eventfrac=5e-3):
         self.files = files
         self.dataset = dataset
         self.treename = treename
