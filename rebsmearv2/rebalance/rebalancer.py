@@ -268,8 +268,8 @@ class RebalanceExecutor():
                 break
             
             # Trigger selection
-            if not self._trigger_preselection(tree, event):
-                continue
+            # if not self._trigger_preselection(tree, event):
+                # continue
 
             # Check if the event contains a lepton or a photon, if so, veto the event
             if self._event_contains_lepton(event, tree):

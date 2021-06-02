@@ -21,7 +21,7 @@ from datetime import date
 from array import array
 from rebsmearv2.rebalance.objects import Jet, JERLookup
 from rebsmearv2.helpers.paths import rebsmear_path
-from rebsmearv2.helpers.helpers import dphi
+from rebsmearv2.helpers.helpers import dphi, min_dphi_jet_met
 from rebsmearv2.helpers.dataset import is_data
 
 pjoin = os.path.join
@@ -111,7 +111,7 @@ class CoffeaSmearer(processor.ProcessorABC):
         '''Set up selection regions.'''
         self.regions = {}
         self.regions['inclusive'] = ['inclusive']
-        self.regions['sr_vbf'] = [
+        common_cuts = [
             'inclusive',
             'mjj',
             'detajj',
@@ -121,6 +121,9 @@ class CoffeaSmearer(processor.ProcessorABC):
             'trailak4_pt_eta',
             'htmiss'
         ]
+        # Two regions: VBF-like signal region and a QCD CR
+        self.regions['sr_vbf'] = common_cuts + ['dphijm_sr']
+        self.regions['cr_vbf_qcd'] = common_cuts + ['dphijm_cr']
 
     def do_smear(self, ak4):
         '''
@@ -208,8 +211,16 @@ class CoffeaSmearer(processor.ProcessorABC):
         ht = sak4[sak4.pt>30].pt.sum()
         htmiss = sak4[sak4.pt>30].p4.sum().pt
 
+        met_phi = sak4[sak4.pt>30].p4.sum().phi
+
         # Require large HTmiss
         selection.add('htmiss', htmiss > 250)
+
+        # Dphi(jet,MET) > 0.5 for SR
+        # Dphi(jet,MET) < 0.5 for QCD CR
+        dphijm = min_dphi_jet_met(sak4, met_phi)
+        selection.add('dphijm_sr', dphijm > 0.5)
+        selection.add('dphijm_cr', dphijm < 0.5)
 
         output = self.accumulator.identity()
         if not df['is_data']:
