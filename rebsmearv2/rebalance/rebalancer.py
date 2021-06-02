@@ -38,6 +38,12 @@ class RebalanceExecutor():
         # Event fraction: Process X% of the events in the set of files, defaults to 0.1%
         self.eventfrac = eventfrac
 
+    def _trigger_preselection(self, tree, event, trigname='HLT_PFJet40'):
+        '''Trigger pre-selection for the given event.'''
+        n = event
+        trigval = tree[trigname].array(entrystart=n, entrystop=n+1)[0]
+        return trigval == 1
+
     def _jet_preselection(self, jet, ptmin=30, absetamax=5.0):
         '''Pre-selection for jets. Includes loose ID requirement (with minimum pt requirement) + HF shape cuts.'''
         abseta = np.abs(jet.eta)
@@ -261,6 +267,10 @@ class RebalanceExecutor():
             if self.test and event == 10:
                 break
             
+            # Trigger selection
+            if not self._trigger_preselection(tree, event):
+                continue
+
             # Check if the event contains a lepton or a photon, if so, veto the event
             if self._event_contains_lepton(event, tree):
                 continue

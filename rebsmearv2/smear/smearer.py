@@ -176,6 +176,8 @@ class CoffeaSmearer(processor.ProcessorABC):
         dataset = df['dataset']
         # Set up physics objects
         ak4 = self._setup_candidates(df)
+        if ak4.size == 0:
+            return
         # Get the smeared jets: This will contain a set of Nevents x Ntoys # of events
         sak4 = self.do_smear(ak4)
 
