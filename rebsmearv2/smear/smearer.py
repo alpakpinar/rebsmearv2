@@ -40,6 +40,7 @@ def get_accumulator():
     jet_phi_ax = Bin("jetphi", r"$\phi$", 50, -np.pi, np.pi)
 
     ht_ax = Bin("ht", r"$H_{T}$ (GeV)", 100, 0, 4000)
+    dphi_ax = Bin("dphi", r"$\Delta\phi$", 50, 0, 3.5)
 
     items = {}
     
@@ -54,6 +55,7 @@ def get_accumulator():
     items["ak4_eta1"] = Hist("Counts", dataset_ax, region_ax, jet_eta_ax)
     items["ak4_phi1"] = Hist("Counts", dataset_ax, region_ax, jet_phi_ax)
 
+    items["dphijm"] = Hist("Counts", dataset_ax, region_ax, dphi_ax)
     items["mjj"] = Hist("Counts", dataset_ax, region_ax, mjj_ax)
     items["ht"] = Hist("Counts", dataset_ax, region_ax, ht_ax)
     items["htmiss"] = Hist("Counts", dataset_ax, region_ax, ht_ax)
@@ -249,6 +251,7 @@ class CoffeaSmearer(processor.ProcessorABC):
             ezfill('mjj',      mjj=mjj[mask])
             ezfill('ht',       ht=ht[mask])
             ezfill('htmiss',   ht=htmiss[mask])
+            ezfill('dphijm',   dphi=dphijm[mask])
 
         return output
 
