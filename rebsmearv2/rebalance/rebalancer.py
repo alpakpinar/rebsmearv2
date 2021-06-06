@@ -13,6 +13,7 @@ r.gSystem.Load('libRooFit')
 
 from datetime import date
 from array import array
+from scipy.stats import expon
 from rebsmearv2.rebalance.objects import Jet, RebalanceWSFactory, JERLookup
 from rebsmearv2.helpers.paths import rebsmear_path
 from rebsmearv2.helpers.dataset import is_data
@@ -27,7 +28,7 @@ class RebalanceExecutor():
     INPUT: Takes the set of files to be processed.
     OUTPUT: Produces ROOT files with rebalanced event information saved.
     '''
-    def __init__(self, files, dataset, treename, test=False, jersource='jer_mc', eventfrac=5e-3):
+    def __init__(self, files, dataset, treename, test=False, jersource='jer_mc'):
         self.files = files
         self.dataset = dataset
         self.treename = treename
@@ -35,8 +36,6 @@ class RebalanceExecutor():
         self.test = test
         # Set up the JER source: "jer_data" or "jer_mc"
         self.jersource = jersource
-        # Event fraction: Process X% of the events in the set of files, defaults to 0.1%
-        self.eventfrac = eventfrac
 
     def _trigger_preselection(self, tree, event, trigname='HLT_PFJet40'):
         '''Trigger pre-selection for the given event.'''
@@ -96,6 +95,10 @@ class RebalanceExecutor():
             jets.append(j)
 
         return jets
+
+    def _compute_ht(self, jets):
+        '''From the given jet collection, compute the HT of the event.'''
+        return sum([j.pt for j in jets])
 
     def _event_has_electron(self, event, tree):
         '''Returns whether an event contains a electron.'''
@@ -247,6 +250,8 @@ class RebalanceExecutor():
         
         htmiss = array('f', [0.])
         ht = array('f', [0.])
+        # Weight for HT based prescaling
+        weight = array('f', [0.])
     
         # Set up branches for the output ROOT file
         outtree.Branch('nJet', njet, 'nJet/I')
@@ -256,15 +261,17 @@ class RebalanceExecutor():
     
         outtree.Branch('HTmiss', htmiss, 'HTmiss/F')
         outtree.Branch('HT', ht, 'HT/F')
+        outtree.Branch('weight', weight, 'weight/F')
+
+        # PDF for the HT
+        pdf = expon(loc=0, scale=100)
 
         # Loop over the events: Rebalance
-        num_events_to_run = math.ceil(self.eventfrac * numevents) 
         print('STARTING REBALANCING')
         print(f'Total number of events: {numevents}')
-        print(f'Number of events to run on: {num_events_to_run}')
-        for event in range(num_events_to_run):
-            # In test mode, only run on first 10 events
-            if self.test and event == 10:
+        for event in range(numevents):
+            # In test mode, only run on first 1000 events
+            if self.test and event == 1000:
                 break
             
             # Trigger selection
@@ -276,6 +283,18 @@ class RebalanceExecutor():
                 continue
 
             jets = self._read_jets(event, tree)
+            if len(jets) == 0:
+                continue
+            
+            # Generate a random number between [0,1].
+            # Use it to discard some events with low HT (private prescaling).
+            randnum = np.random.rand()
+
+            # Compute the HT of the event before rebalancing
+            ht_bef = self._compute_ht(jets)
+            if pdf.pdf(ht_bef) > randnum:
+                continue
+
             rbwsfac = RebalanceWSFactory(jets)
             # JER source, initiate the object and specify the JER input
             jer_evaluator = JERLookup()

@@ -97,11 +97,6 @@ def run_rebsmear_job(files, dataset, treename='Events', test=False, jersource=No
     se.set_output_dir(outpath)
     se.analyze_files()
 
-    # Step 3: Accumulating
-    # ppexec = PostProcExecutor(files=outfiles)
-    # ppexec.set_output_dir(outpath)
-    # ppexec.analyze_files()
-
     # Step 3: Plotting
     # To come?
 

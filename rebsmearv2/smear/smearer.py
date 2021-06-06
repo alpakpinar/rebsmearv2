@@ -87,11 +87,12 @@ def read_resolution(ak4, jersource):
     return sigma
 
 class CoffeaSmearer(processor.ProcessorABC):
-    def __init__(self, ntoys=100, jersource='jer_mc'):
+    def __init__(self, eventweight, ntoys=100, jersource='jer_mc'):
         self._accumulator = get_accumulator()
         self._setup_regions()
         self.ntoys = ntoys
         self.jersource = jersource
+        self.eventweight = eventweight
 
     @property
     def accumulator(self):
@@ -240,18 +241,18 @@ class CoffeaSmearer(processor.ProcessorABC):
                                 **kwargs
                                 )
             # Fill histograms
-            ezfill('ak4_pt0',     jetpt=diak4.i0.pt[mask].flatten())
-            ezfill('ak4_eta0',    jeteta=diak4.i0.eta[mask].flatten())
-            ezfill('ak4_phi0',    jetphi=diak4.i0.phi[mask].flatten())
+            ezfill('ak4_pt0',     jetpt=diak4.i0.pt[mask].flatten(),      weight=self.eventweight)
+            ezfill('ak4_eta0',    jeteta=diak4.i0.eta[mask].flatten(),    weight=self.eventweight)
+            ezfill('ak4_phi0',    jetphi=diak4.i0.phi[mask].flatten(),    weight=self.eventweight)
 
-            ezfill('ak4_pt1',     jetpt=diak4.i1.pt[mask].flatten())
-            ezfill('ak4_eta1',    jeteta=diak4.i1.eta[mask].flatten())
-            ezfill('ak4_phi1',    jetphi=diak4.i1.phi[mask].flatten())
+            ezfill('ak4_pt1',     jetpt=diak4.i1.pt[mask].flatten(),      weight=self.eventweight)
+            ezfill('ak4_eta1',    jeteta=diak4.i1.eta[mask].flatten(),    weight=self.eventweight)
+            ezfill('ak4_phi1',    jetphi=diak4.i1.phi[mask].flatten(),    weight=self.eventweight)
 
-            ezfill('mjj',      mjj=mjj[mask])
-            ezfill('ht',       ht=ht[mask])
-            ezfill('htmiss',   ht=htmiss[mask])
-            ezfill('dphijm',   dphi=dphijm[mask])
+            ezfill('mjj',      mjj=mjj[mask],        weight=self.eventweight )
+            ezfill('ht',       ht=ht[mask],          weight=self.eventweight )
+            ezfill('htmiss',   ht=htmiss[mask],      weight=self.eventweight )
+            ezfill('dphijm',   dphi=dphijm[mask],    weight=self.eventweight )
 
         return output
 
@@ -266,12 +267,14 @@ class SmearExecutor():
     INPUT: Set of ROOT files containing event information stored as TTrees.
     OUTPUT: Set of coffea files containing histograms with smeared events.
     '''
-    def __init__(self, files, ntoys=50):
+    def __init__(self, files, ntoys=100, psweight=5):
         self.files = files
         # Number of toys, this many events will be generated per rebalanced event
         # (1 event = 1 smearing)
         self.ntoys = ntoys
-    
+        # Event weight is calculated as (prescale weight) / (num toys)
+        self.eventweight = psweight / ntoys
+
     def _read_sumw_sumw2(self, file):
         runs = uproot.open(file)['Runs']
         return runs['sumw'].array()[0], runs['sumw2'].array()[0]    
@@ -296,7 +299,7 @@ class SmearExecutor():
         if not df['is_data']:
             df['sumw'], df['sumw2'] = self._read_sumw_sumw2(file)
 
-        processor_instance = CoffeaSmearer(ntoys=self.ntoys)
+        processor_instance = CoffeaSmearer(eventweight=self.eventweight, ntoys=self.ntoys)
         out = processor_instance.process(df)
 
         # Save the output file
