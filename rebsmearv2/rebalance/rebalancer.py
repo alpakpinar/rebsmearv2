@@ -80,6 +80,11 @@ class RebalanceExecutor():
 
         jets = []
         for idx in range(len(pt)):
+            # pt and eta requirement on jets
+            jet_pass = (pt[idx] > ptmin) & (np.abs(eta[idx]) < abseta)
+            if not jet_pass:
+                continue
+
             j = Jet(
                 pt=pt[idx],
                 phi=phi[idx],
@@ -264,7 +269,8 @@ class RebalanceExecutor():
         outtree.Branch('weight', weight, 'weight/F')
 
         # PDF for the HT
-        pdf = expon(loc=0, scale=100)
+        scale=100
+        pdf = expon(loc=0, scale=scale)
 
         # Loop over the events: Rebalance
         print('STARTING REBALANCING')
@@ -292,7 +298,7 @@ class RebalanceExecutor():
 
             # Compute the HT of the event before rebalancing
             ht_bef = self._compute_ht(jets)
-            if pdf.pdf(ht_bef) > randnum:
+            if scale * pdf.pdf(ht_bef) > randnum:
                 continue
 
             rbwsfac = RebalanceWSFactory(jets)
