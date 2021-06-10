@@ -13,7 +13,7 @@ r.gSystem.Load('libRooFit')
 
 from datetime import date
 from array import array
-from scipy.stats import expon
+from scipy.stats import expon, rv_histogram
 from rebsmearv2.rebalance.objects import Jet, RebalanceWSFactory, JERLookup
 from rebsmearv2.helpers.paths import rebsmear_path
 from rebsmearv2.helpers.dataset import is_data
@@ -81,7 +81,7 @@ class RebalanceExecutor():
         jets = []
         for idx in range(len(pt)):
             # pt and eta requirement on jets
-            jet_pass = (pt[idx] > ptmin) & (np.abs(eta[idx]) < abseta)
+            jet_pass = (pt[idx] > ptmin) & (np.abs(eta[idx]) < absetamax)
             if not jet_pass:
                 continue
 
@@ -104,6 +104,14 @@ class RebalanceExecutor():
     def _compute_ht(self, jets):
         '''From the given jet collection, compute the HT of the event.'''
         return sum([j.pt for j in jets])
+
+    def _compute_prescale(self, ht):
+        '''Based on the HT of the event before rebalancing, get the prescaling factor.'''
+        if (ht > 100) & (ht < 300):
+            return 100
+        elif (ht > 300) & (ht < 500):
+            return 10
+        return 1
 
     def _event_has_electron(self, event, tree):
         '''Returns whether an event contains a electron.'''
@@ -268,10 +276,6 @@ class RebalanceExecutor():
         outtree.Branch('HT', ht, 'HT/F')
         outtree.Branch('weight', weight, 'weight/F')
 
-        # PDF for the HT
-        scale=100
-        pdf = expon(loc=0, scale=scale)
-
         # Loop over the events: Rebalance
         print('STARTING REBALANCING')
         print(f'Total number of events: {numevents}')
@@ -298,7 +302,11 @@ class RebalanceExecutor():
 
             # Compute the HT of the event before rebalancing
             ht_bef = self._compute_ht(jets)
-            if scale * pdf.pdf(ht_bef) > randnum:
+
+            # Prescale value
+            prescale = self._compute_prescale(ht_bef)
+
+            if randnum > (1/prescale):
                 continue
 
             rbwsfac = RebalanceWSFactory(jets)
@@ -338,6 +346,9 @@ class RebalanceExecutor():
             htmiss[0] = ws.function('gen_htmiss_pt').getValV()
             ht[0] = ws.function('gen_ht').getValV()
     
+            # Store the prescale weight for later use
+            weight[0] = prescale
+
             outtree.Fill()
 
         # Once we're done with events, save 'em

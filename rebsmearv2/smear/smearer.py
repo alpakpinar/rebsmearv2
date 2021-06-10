@@ -128,7 +128,7 @@ class CoffeaSmearer(processor.ProcessorABC):
         self.regions['sr_vbf'] = common_cuts + ['dphijm_sr']
         self.regions['cr_vbf_qcd'] = common_cuts + ['dphijm_cr']
 
-    def do_smear(self, ak4):
+    def do_smear(self, ak4, weight):
         '''
         Core function to do the smearing and return the modified jet objects.
         
@@ -176,7 +176,12 @@ class CoffeaSmearer(processor.ProcessorABC):
             mass=jetpt * 0.
         )
 
-        return newak4
+        # Also return a modified event weight array
+        weights = np.concatenate(
+            [weight for k in range(self.ntoys)]
+        )
+
+        return newak4, weights
 
     def process(self, df):
         dataset = df['dataset']
@@ -185,7 +190,7 @@ class CoffeaSmearer(processor.ProcessorABC):
         if ak4.size == 0:
             return
         # Get the smeared jets: This will contain a set of Nevents x Ntoys # of events
-        sak4 = self.do_smear(ak4)
+        sak4, weight = self.do_smear(ak4, weight=self.eventweight)
 
         # Leading jet pair
         diak4 = sak4[:,:2].distincts()
@@ -240,19 +245,20 @@ class CoffeaSmearer(processor.ProcessorABC):
                                 region=region,
                                 **kwargs
                                 )
+
             # Fill histograms
-            ezfill('ak4_pt0',     jetpt=diak4.i0.pt[mask].flatten(),      weight=self.eventweight)
-            ezfill('ak4_eta0',    jeteta=diak4.i0.eta[mask].flatten(),    weight=self.eventweight)
-            ezfill('ak4_phi0',    jetphi=diak4.i0.phi[mask].flatten(),    weight=self.eventweight)
+            ezfill('ak4_pt0',     jetpt=diak4.i0.pt[mask].flatten(),      weight=weight[mask])
+            ezfill('ak4_eta0',    jeteta=diak4.i0.eta[mask].flatten(),    weight=weight[mask])
+            ezfill('ak4_phi0',    jetphi=diak4.i0.phi[mask].flatten(),    weight=weight[mask])
 
-            ezfill('ak4_pt1',     jetpt=diak4.i1.pt[mask].flatten(),      weight=self.eventweight)
-            ezfill('ak4_eta1',    jeteta=diak4.i1.eta[mask].flatten(),    weight=self.eventweight)
-            ezfill('ak4_phi1',    jetphi=diak4.i1.phi[mask].flatten(),    weight=self.eventweight)
+            ezfill('ak4_pt1',     jetpt=diak4.i1.pt[mask].flatten(),      weight=weight[mask])
+            ezfill('ak4_eta1',    jeteta=diak4.i1.eta[mask].flatten(),    weight=weight[mask])
+            ezfill('ak4_phi1',    jetphi=diak4.i1.phi[mask].flatten(),    weight=weight[mask])
 
-            ezfill('mjj',      mjj=mjj[mask],        weight=self.eventweight )
-            ezfill('ht',       ht=ht[mask],          weight=self.eventweight )
-            ezfill('htmiss',   ht=htmiss[mask],      weight=self.eventweight )
-            ezfill('dphijm',   dphi=dphijm[mask],    weight=self.eventweight )
+            ezfill('mjj',      mjj=mjj[mask],        weight=weight[mask] )
+            ezfill('ht',       ht=ht[mask],          weight=weight[mask] )
+            ezfill('htmiss',   ht=htmiss[mask],      weight=weight[mask] )
+            ezfill('dphijm',   dphi=dphijm[mask],    weight=weight[mask] )
 
         return output
 
@@ -272,7 +278,8 @@ class SmearExecutor():
         # Number of toys, this many events will be generated per rebalanced event
         # (1 event = 1 smearing)
         self.ntoys = ntoys
-        # Event weight is calculated as (prescale weight) / (num toys)
+        # Event weight is calculated as (prescale weight HLT_PFJet40) / (num toys)
+        # NOTE: Private prescaling weight will be added to this variable as we process
         self.eventweight = psweight / ntoys
 
     def _read_sumw_sumw2(self, file):
@@ -299,7 +306,10 @@ class SmearExecutor():
         if not df['is_data']:
             df['sumw'], df['sumw2'] = self._read_sumw_sumw2(file)
 
-        processor_instance = CoffeaSmearer(eventweight=self.eventweight, ntoys=self.ntoys)
+
+        eventweight = self.eventweight * df['weight']
+
+        processor_instance = CoffeaSmearer(eventweight=eventweight, ntoys=self.ntoys)
         out = processor_instance.process(df)
 
         # Save the output file
