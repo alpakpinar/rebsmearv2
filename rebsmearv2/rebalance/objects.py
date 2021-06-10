@@ -5,6 +5,7 @@ import numpy as np
 from rebsmearv2.helpers.paths import rebsmear_path
 
 r.RooMsgService.instance().setStreamStatus(1,False)
+r.RooMsgService.instance().setSilentMode(True)
 
 @dataclass(frozen=False)
 class Jet():
