@@ -11,7 +11,7 @@ import uproot
 import ROOT as r
 r.gSystem.Load('libRooFit')
 
-from datetime import date
+from datetime import date, datetime
 from array import array
 from scipy.stats import expon, rv_histogram
 from rebsmearv2.rebalance.objects import Jet, RebalanceWSFactory, JERLookup
@@ -279,11 +279,17 @@ class RebalanceExecutor():
         # Loop over the events: Rebalance
         print('STARTING REBALANCING')
         print(f'Total number of events: {numevents}')
+        time_init = datetime.now()
+        print(f'Time: {time_init}')
         for event in range(numevents):
             # In test mode, only run on first 1000 events
             if self.test and event == 1000:
                 break
             
+            if event % 1e5 == 0:
+                print(f'Processing event: {event}')
+                print(f'Time: {datetime.now() - time_init}')
+
             # Trigger selection
             if not self._trigger_preselection(tree, event):
                 continue
