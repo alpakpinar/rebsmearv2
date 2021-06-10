@@ -302,6 +302,9 @@ class RebalanceExecutor():
 
             # Compute the HT of the event before rebalancing
             ht_bef = self._compute_ht(jets)
+            # HT > 100 GeV cut
+            if ht_bef < 100:
+                continue
 
             # Prescale value
             prescale = self._compute_prescale(ht_bef)
@@ -316,16 +319,7 @@ class RebalanceExecutor():
             jer_evaluator.from_th1(rebsmear_path("./input/jer.root"), self.jersource)
             
             rbwsfac.set_jer_evaluator(jer_evaluator)
-            try:
-                rbwsfac.build()
-            except RuntimeError as e:
-                # If error is due to HT < 100 GeV, simply discard the event and continue the loop
-                if 'HT bin' in str(e):
-                    print('WARNING: HT < 100 GeV, skipping event.')
-                    continue
-                # Shoot, something else has happened
-                else:
-                    raise RuntimeError(e)
+            rbwsfac.build()
             
             ws = rbwsfac.get_ws()
 
