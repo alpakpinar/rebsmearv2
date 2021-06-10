@@ -299,7 +299,9 @@ class RebalanceExecutor():
                 continue
 
             jets = self._read_jets(event, tree)
-            if len(jets) == 0:
+
+            # Require a minimum of two jets (VBF phase space)
+            if len(jets) < 2:
                 continue
             
             # Generate a random number between [0,1].
