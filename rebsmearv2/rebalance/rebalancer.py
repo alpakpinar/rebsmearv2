@@ -282,22 +282,6 @@ class RebalanceExecutor():
         time_init = datetime.now()
         print(f'Time: {time_init}')
         for event in range(numevents):
-            # In test mode, only run on first 1000 events
-            if self.test and event == 1000:
-                break
-            
-            if event % 1e5 == 0:
-                print(f'Processing event: {event}')
-                print(f'Time: {datetime.now() - time_init}')
-
-            # Trigger selection
-            if not self._trigger_preselection(tree, event):
-                continue
-
-            # Check if the event contains a lepton or a photon, if so, veto the event
-            if self._event_contains_lepton(event, tree):
-                continue
-
             jets = self._read_jets(event, tree)
 
             # Require a minimum of two jets (VBF phase space)
@@ -318,6 +302,22 @@ class RebalanceExecutor():
             prescale = self._compute_prescale(ht_bef)
 
             if randnum > (1/prescale):
+                continue
+
+            # In test mode, only run on first 1000 events
+            if self.test and event == 1000:
+                break
+            
+            if event % 1e5 == 0:
+                print(f'Processing event: {event}')
+                print(f'Time: {datetime.now() - time_init}')
+
+            # Trigger selection
+            if not self._trigger_preselection(tree, event):
+                continue
+
+            # Check if the event contains a lepton or a photon, if so, veto the event
+            if self._event_contains_lepton(event, tree):
                 continue
 
             rbwsfac = RebalanceWSFactory(jets)
