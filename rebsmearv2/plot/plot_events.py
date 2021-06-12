@@ -9,7 +9,7 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 from coffea import hist
-from rebsmearv2.plot.util import scale_xs_lumi_sumw, merge_datasets
+from rebsmearv2.plot.util import scale_xs_lumi_sumw, rs_merge_datasets
 from klepto.archives import dir_archive
 from pprint import pprint
 
@@ -23,8 +23,8 @@ BINNINGS = {
     'ak4_eta1' : hist.Bin('jeteta',r'Trailing AK4 jet $\eta$', 50, -5, 5),
     'ak4_phi0' : hist.Bin('jetphi',r'Leading AK4 jet $\phi$', 50, -np.pi, np.pi),
     'ak4_phi1' : hist.Bin('jetphi',r'Trailing AK4 jet $\phi$', 50, -np.pi, np.pi),
-    'ht' : hist.Bin("ht", r"$H_{T}$ (GeV)", 20, 0, 4000),
-    'htmiss' : hist.Bin("ht", r"$H_{T}^{miss}$ (GeV)", 20, 0, 4000),
+    'ht' : hist.Bin("ht", r"$H_{T}$ (GeV)", 50, 0, 4000),
+    'htmiss' : hist.Bin("ht", r"$H_{T}^{miss}$ (GeV)", 50, 0, 4000),
 }
 
 def parse_cli():
@@ -40,7 +40,7 @@ def make_plot(acc, distribution, outdir='./output', region='sr_vbf', dataset='QC
     h = acc[distribution]
 
     scale_xs_lumi_sumw(h, acc)
-    h = merge_datasets(h)
+    h = rs_merge_datasets(h)
 
     # Rebinning
     try:
@@ -95,7 +95,8 @@ def main():
 
     regions = [
         'inclusive',
-        'sr_vbf'
+        # 'sr_vbf',
+        # 'cr_vbf_qcd'
     ]
     
     for region in regions:

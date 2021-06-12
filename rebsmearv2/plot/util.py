@@ -65,7 +65,7 @@ def scale_xs_lumi_sumw(histogram, acc, scale_lumi=True):
     norm_dict = {mc : 1e3 * xs_map[mc] * (lumi(extract_year(mc)) if scale_lumi else 1) / sumw[mc] for mc in mcs}
     histogram.scale(norm_dict, axis='dataset')
 
-def merge_datasets(histogram):
+def rs_merge_datasets(histogram):
     '''Merge datasets that belong to the same physics process.'''
     all_datasets = list(map(str, histogram.identifiers('dataset')))
     mapping = {
