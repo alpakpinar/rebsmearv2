@@ -273,7 +273,7 @@ class SmearExecutor():
     INPUT: Set of ROOT files containing event information stored as TTrees.
     OUTPUT: Set of coffea files containing histograms with smeared events.
     '''
-    def __init__(self, files, ntoys=100, psweight=5):
+    def __init__(self, files, ntoys=1e4, psweight=5):
         self.files = files
         # Number of toys, this many events will be generated per rebalanced event
         # (1 event = 1 smearing)
