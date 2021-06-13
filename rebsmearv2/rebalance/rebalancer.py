@@ -286,7 +286,7 @@ class RebalanceExecutor():
             if self.test and event == 1000:
                 break
             
-            if event % 1e5 == 0:
+            if event % 1e4 == 0:
                 print(f'Processing event: {event}')
                 print(f'Time: {datetime.now() - time_init}')
 
