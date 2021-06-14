@@ -30,7 +30,10 @@ Bin = hist.Bin
 Cat = hist.Cat
 Hist = hist.Hist
 
-def get_accumulator():
+def accu_int():
+    return processor.defaultdict_accumulator(int)
+
+def get_accumulator(regions):
     dataset_ax = Cat("dataset", "Primary dataset")
     region_ax = Cat("region", "Selection region")
 
@@ -60,6 +63,11 @@ def get_accumulator():
     items["ht"] = Hist("Counts", dataset_ax, region_ax, ht_ax)
     items["htmiss"] = Hist("Counts", dataset_ax, region_ax, ht_ax)
 
+    for region in regions:
+        if region == "inclusive":
+            continue
+        items[f'cutflow_{region}']  = processor.defaultdict_accumulator(accu_int)
+
     return processor.dict_accumulator(items)
 
 def create_evaluator_forJER(jersource):
@@ -88,8 +96,8 @@ def read_resolution(ak4, jersource):
 
 class CoffeaSmearer(processor.ProcessorABC):
     def __init__(self, eventweight, ntoys=100, jersource='jer_mc'):
-        self._accumulator = get_accumulator()
         self._setup_regions()
+        self._accumulator = get_accumulator(self.regions)
         self.ntoys = ntoys
         self.jersource = jersource
         self.eventweight = eventweight
@@ -236,6 +244,13 @@ class CoffeaSmearer(processor.ProcessorABC):
             output['sumw2'][dataset] +=  df['sumw2']
         
         for region, cuts in self.regions.items():
+            
+            # Fill cutflow
+            if region != 'inclusive':
+                output[f'cutflow_{region}'][dataset]['all'] += df.size
+                    for icut, cutname in enumerate(cuts):
+                        output['cutflow_' + region][dataset][cutname] += selection.all(*cuts[:icut+1]).sum()
+            
             mask = selection.all(*cuts)
 
             def ezfill(name, **kwargs):
