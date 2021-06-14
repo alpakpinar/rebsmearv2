@@ -248,8 +248,8 @@ class CoffeaSmearer(processor.ProcessorABC):
             # Fill cutflow
             if region != 'inclusive':
                 output[f'cutflow_{region}'][dataset]['all'] += df.size
-                    for icut, cutname in enumerate(cuts):
-                        output['cutflow_' + region][dataset][cutname] += selection.all(*cuts[:icut+1]).sum()
+                for icut, cutname in enumerate(cuts):
+                    output['cutflow_' + region][dataset][cutname] += selection.all(*cuts[:icut+1]).sum()
             
             mask = selection.all(*cuts)
 
