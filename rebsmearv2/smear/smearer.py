@@ -216,7 +216,7 @@ class CoffeaSmearer(processor.ProcessorABC):
         trailak4_pt_eta = (diak4.i1.pt > 40) & (np.abs(diak4.i1.eta) < 4.7)
         hemisphere = (diak4.i0.eta * diak4.i1.eta < 0).any()
 
-        selection.add('mjj', mjj > 200)
+        selection.add('mjj', mjj > 200.)
         selection.add('detajj', detajj > 1.)
         selection.add('dphijj', dphijj < 1.5)
         selection.add('hemisphere', hemisphere)
@@ -244,10 +244,10 @@ class CoffeaSmearer(processor.ProcessorABC):
             output['sumw2'][dataset] +=  df['sumw2']
         
         for region, cuts in self.regions.items():
-            
+
             # Fill cutflow
             if region != 'inclusive':
-                output[f'cutflow_{region}'][dataset]['all'] += df.size
+                output[f'cutflow_{region}'][dataset]['all'] += len(sak4)
                 for icut, cutname in enumerate(cuts):
                     output['cutflow_' + region][dataset][cutname] += selection.all(*cuts[:icut+1]).sum()
             

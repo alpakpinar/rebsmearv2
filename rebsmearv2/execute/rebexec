@@ -24,11 +24,11 @@ pjoin = os.path.join
 def parse_cli():
     parser = argparse.ArgumentParser()
     parser.add_argument('--outpath', default=f'./output/{date.today().strftime("%Y-%m-%d")}_rebsmear_run', help='Path to save the output under.')
+    parser.add_argument('--steps', nargs='*', help='The steps to process. Default is both: rebalance and smear.', default=['rebalance', 'smear'])
     parser.add_argument('--tree',type=str, default='Events', help='Name of the TTree in the input files.')
     parser.add_argument('--jobs','-j', type=int, default=1, help='Number of cores to use / request.')
     parser.add_argument('--dummyjer', help='Placeholder Gaussian width for JER (for testing).', type=float, default=None)
     parser.add_argument('--rebtrees', help='The path to the directory including rebalanced trees, if they are already present.', default=None)
-    parser.add_argument('--steps', help='The steps to process. Default is both: rebalance and smear.', default=['rebalance', 'smear'])
 
     subparsers = parser.add_subparsers(help='sub-command help')
     # Arguments passed to the "run" operation
@@ -208,9 +208,9 @@ def do_submit(args):
             # Job file creation
             arguments = [
                 f'--outpath .',
+                f'--steps {" ".join(args.steps)}',
                 f'--jobs {args.jobs}',
                 f'--tree {args.tree}',
-                f'--steps {" ".join(args.steps)}',
                 'worker',
                 f'--dataset {dataset}',
                 f'--filelist {os.path.basename(tmpfile)}',
