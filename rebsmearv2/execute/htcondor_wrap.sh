@@ -34,6 +34,6 @@ echo "Directory content---"
 ls -lah .
 echo "===================="
 
-echo "Cleaning up."
-rm -vf *.root
+# echo "Cleaning up."
+# rm -vf *.root
 echo "End: $(date)"

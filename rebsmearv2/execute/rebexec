@@ -27,6 +27,8 @@ def parse_cli():
     parser.add_argument('--tree',type=str, default='Events', help='Name of the TTree in the input files.')
     parser.add_argument('--jobs','-j', type=int, default=1, help='Number of cores to use / request.')
     parser.add_argument('--dummyjer', help='Placeholder Gaussian width for JER (for testing).', type=float, default=None)
+    parser.add_argument('--rebtrees', help='The path to the directory including rebalanced trees, if they are already present.', default=None)
+    parser.add_argument('--steps', help='The steps to process. Default is both: rebalance and smear.', default=['rebalance', 'smear'])
 
     subparsers = parser.add_subparsers(help='sub-command help')
     # Arguments passed to the "run" operation
@@ -69,26 +71,38 @@ def chunk_by_files(items, nchunk):
         chunks[i % nchunk].append(items[i])
     return chunks
 
-def run_rebsmear_job(files, dataset, treename='Events', test=False, jersource=None, outpath=None):
+def run_rebsmear_job(files, dataset, treename='Events', test=False, jersource=None, outpath=None, steps=['rebalance', 'smear'], rebalanced_tree_dir=None):
     '''
     Wrapper function to run a complete rebalance and smear job.
     Goes through the following steps:
     1. Rebalancing
     2. Apply smearing + accumulate to histograms
     3. Make plots (Yet to come!)
+
+    The steps to run have to be specified in the "steps" argument. By default,
+    this function will run both steps.
     '''
-    jersource = get_jer_source(dataset)
-    # Step 1: Rebalancing
-    e = RebalanceExecutor(files=files, 
-            dataset=dataset, 
-            treename='Events', 
-            test=test,
-            jersource=jersource
-        )
-        
-    # Set output path to save files
-    e.set_output_dir(outpath)
-    outfiles = e.process()
+    if (not rebalanced_tree_dir) and ('rebalance' not in steps):
+        raise RuntimeError('Please provide rebalancing as a step or provide a set of input files to be used by the smearer.')
+
+    if steps[0] == 'rebalance':
+        jersource = get_jer_source(dataset)
+        # Step 1: Rebalancing
+        e = RebalanceExecutor(files=files, 
+                dataset=dataset, 
+                treename='Events', 
+                test=test,
+                jersource=jersource
+            )
+            
+        # Set output path to save files
+        e.set_output_dir(outpath)
+        outfiles = e.process()
+
+    # If we don't do rebalancing and run smearing on ready trees,
+    # one MUST specify the set of files.
+    else:
+        outfiles = [pjoin(rebalanced_tree_dir, p) for p in os.listdir(rebalanced_tree_dir) if re.match('tree_.*root', p)]
 
     # Step 2: Smearing + accumulating
     se = SmearExecutor(files=outfiles)
@@ -116,7 +130,9 @@ def do_run(args):
             treename='Events',
             test=args.testrun,
             jersource=get_jer_source(args.dataset),
-            outpath=args.outpath
+            outpath=args.outpath,
+            steps=args.steps,
+            rebalanced_tree_dir=args.rebtrees
         )
 
 def do_worker(args):
@@ -135,7 +151,9 @@ def do_worker(args):
         dataset=args.dataset,
         treename='Events',
         jersource=get_jer_source(args.dataset),
-        outpath=args.outpath
+        outpath=args.outpath,
+        steps=args.steps,
+        rebalanced_tree_dir=args.rebtrees
     )
 
 def do_submit(args):
@@ -192,6 +210,7 @@ def do_submit(args):
                 f'--outpath .',
                 f'--jobs {args.jobs}',
                 f'--tree {args.tree}',
+                f'--steps {" ".join(args.steps)}',
                 'worker',
                 f'--dataset {dataset}',
                 f'--filelist {os.path.basename(tmpfile)}',
@@ -201,6 +220,12 @@ def do_submit(args):
             job_input_files = input_files + [
                 os.path.abspath(tmpfile)
             ]
+
+            if args.rebtrees:
+                arguments.insert(0, '--rebtrees .')
+                job_input_files.extend(
+                    [pjoin(args.rebtrees, p) for p in os.listdir(args.rebtrees) if p.endswith('.root')]
+                )
 
             chunkname = f'{dataset}_{ichunk:03d}of{len(chunks):03d}'
             submission_settings = {
