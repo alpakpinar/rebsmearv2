@@ -13,3 +13,10 @@ def min_dphi_jet_met(jets, met_phi, ptmin=30, njet=4):
     jets = jets[:,:njet]
 
     return dphi(jets.phi, met_phi).min()
+
+def calc_mjj(jet1, jet2):
+    '''Calculate the invariant mass of two jets.'''
+    deta = np.cosh(jet1.eta - jet2.eta)
+    dphi = np.cos(jet1.phi - jet2.phi)
+
+    return np.sqrt(2 * jet1.pt * jet2.pt * (deta - dphi))

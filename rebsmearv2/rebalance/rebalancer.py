@@ -17,6 +17,7 @@ from scipy.stats import expon, rv_histogram
 from rebsmearv2.rebalance.objects import Jet, RebalanceWSFactory, JERLookup
 from rebsmearv2.helpers.paths import rebsmear_path
 from rebsmearv2.helpers.dataset import is_data
+from rebsmearv2.helpers.helpers import dphi, calc_mjj
 from pprint import pprint
 
 pjoin = os.path.join
@@ -69,6 +70,23 @@ class RebalanceExecutor():
 
         return True
 
+    def _kinematic_preselection(self, jets):
+        '''Kinematic pre-selection on mjj and dphijj.'''
+        dphijj = dphi(jets[0].phi, jets[1].phi)
+        if dphijj > 2:
+            return False
+
+        mjj = calc_mjj(*jets[:2])
+        if mjj < 100:
+            return False
+
+        htmiss = self._compute_htmiss(jets)
+        # HTmiss > 50 GeV cut
+        if htmiss < 50:
+            return False
+
+        return True
+
     def _read_jets(self, event, tree, ptmin=30, absetamax=5.0):
         n = event
 
@@ -104,6 +122,16 @@ class RebalanceExecutor():
     def _compute_ht(self, jets):
         '''From the given jet collection, compute the HT of the event.'''
         return sum([j.pt for j in jets])
+
+    def _compute_htmiss(self, jets):
+        '''From the given jet collection, compute the HTmiss of the event.'''
+        htmiss_x = 0
+        htmiss_y = 0
+        for j in jets:
+            htmiss_x += j.px
+            htmiss_y += j.py
+        
+        return np.hypot(htmiss_x, htmiss_y)
 
     def _compute_prescale(self, ht):
         '''Based on the HT of the event before rebalancing, get the prescaling factor.'''
@@ -304,17 +332,21 @@ class RebalanceExecutor():
             if len(jets) < 2:
                 continue
             
+            # Kinematic pre-selection based on jets
+            if not self._kinematic_preselection(jets):
+                continue
+
             # Generate a random number between [0,1].
             # Use it to discard some events with low HT (private prescaling).
             randnum = np.random.rand()
 
-            # Compute the HT of the event before rebalancing
+            # Compute the HT and HTmiss of the event before rebalancing
             ht_bef = self._compute_ht(jets)
             # HT > 100 GeV cut
             if ht_bef < 100:
                 continue
 
-            # Prescale value
+            # Prescale value based on HT
             prescale = self._compute_prescale(ht_bef)
 
             if randnum > (1/prescale):
