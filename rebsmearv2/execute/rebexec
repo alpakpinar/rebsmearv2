@@ -96,7 +96,8 @@ def run_rebsmear_job(files, dataset, treename='Events', test=False, jersource=No
                 dataset=dataset, 
                 treename='Events', 
                 test=test,
-                jersource=jersource
+                jersource=jersource,
+                dphiprescale=True
             )
             
         # Set output path to save files

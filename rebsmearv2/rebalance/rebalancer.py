@@ -29,7 +29,15 @@ class RebalanceExecutor():
     INPUT: Takes the set of files to be processed.
     OUTPUT: Produces ROOT files with rebalanced event information saved.
     '''
-    def __init__(self, files, dataset, treename, test=False, jersource='jer_mc'):
+    def __init__(self, 
+            files, 
+            dataset, 
+            treename, 
+            test=False, 
+            jersource='jer_mc',
+            htprescale=False,
+            dphiprescale=False
+            ):
         self.files = files
         self.dataset = dataset
         self.treename = treename
@@ -37,6 +45,9 @@ class RebalanceExecutor():
         self.test = test
         # Set up the JER source: "jer_data" or "jer_mc"
         self.jersource = jersource
+
+        self.htprescale = htprescale
+        self.dphiprescale = dphiprescale
 
     def _trigger_preselection(self, tree, event, trigname='HLT_PFJet40'):
         '''Trigger pre-selection for the given event.'''
@@ -72,10 +83,6 @@ class RebalanceExecutor():
 
     def _kinematic_preselection(self, jets):
         '''Kinematic pre-selection on mjj and dphijj.'''
-        dphijj = dphi(jets[0].phi, jets[1].phi)
-        if dphijj > 2:
-            return False
-
         mjj = calc_mjj(*jets[:2])
         if mjj < 100:
             return False
@@ -133,11 +140,21 @@ class RebalanceExecutor():
         
         return np.hypot(htmiss_x, htmiss_y)
 
-    def _compute_prescale(self, ht):
+    def _compute_ht_prescale(self, ht):
         '''Based on the HT of the event before rebalancing, get the prescaling factor.'''
         if (ht > 100) & (ht < 300):
             return 100
         elif (ht > 300) & (ht < 500):
+            return 10
+        return 1
+
+    def _compute_dphi_prescale(self, jets):
+        '''Based on the dphi between the two leading jets of the event, get the prescaling factor.'''
+        dphijj = dphi(jets[0].phi, jets[1].phi)
+
+        if (dphijj > 2.5):
+            return 100
+        elif (dphijj > 2.) & (dphijj < 2.5):
             return 10
         return 1
 
@@ -347,10 +364,16 @@ class RebalanceExecutor():
                 continue
 
             # Prescale value based on HT
-            prescale = self._compute_prescale(ht_bef)
+            if self.htprescale:
+                prescale = self._compute_ht_prescale(ht_bef)
+                if randnum > (1/prescale):
+                    continue
 
-            if randnum > (1/prescale):
-                continue
+            # Prescale value based on dphi between the two leading jets
+            if self.dphiprescale:
+                prescale = self._compute_dphi_prescale(jets)
+                if randnum > (1/prescale):
+                    continue
 
             rbwsfac = RebalanceWSFactory(jets)
             # JER source, initiate the object and specify the JER input
