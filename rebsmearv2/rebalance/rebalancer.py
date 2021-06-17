@@ -88,8 +88,8 @@ class RebalanceExecutor():
             return False
 
         htmiss = self._compute_htmiss(jets)
-        # HTmiss > 50 GeV cut
-        if htmiss < 50:
+        # HTmiss > 150 GeV cut
+        if htmiss < 150:
             return False
 
         return True
