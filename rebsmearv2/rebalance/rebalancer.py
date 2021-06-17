@@ -364,6 +364,7 @@ class RebalanceExecutor():
                 continue
 
             # Prescale value based on HT
+            prescale = None
             if self.htprescale:
                 prescale = self._compute_ht_prescale(ht_bef)
                 if randnum > (1/prescale):
@@ -404,7 +405,8 @@ class RebalanceExecutor():
             ht[0] = ws.function('gen_ht').getValV()
     
             # Store the prescale weight for later use
-            weight[0] = prescale
+            if prescale:
+                weight[0] = prescale
 
             outtree.Fill()
 
