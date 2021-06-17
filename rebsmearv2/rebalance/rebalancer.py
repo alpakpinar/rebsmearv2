@@ -405,8 +405,11 @@ class RebalanceExecutor():
             ht[0] = ws.function('gen_ht').getValV()
     
             # Store the prescale weight for later use
+            # If no prescaling was done, weight would be just 1.
             if prescale:
                 weight[0] = prescale
+            else:
+                weight[0] = 1
 
             outtree.Fill()
 
