@@ -43,6 +43,7 @@ def get_accumulator(regions):
     jet_phi_ax = Bin("jetphi", r"$\phi$", 50, -np.pi, np.pi)
 
     ht_ax = Bin("ht", r"$H_{T}$ (GeV)", 100, 0, 4000)
+    mht_ax = Bin("ht", r"$H_{T}$ (GeV)", 80, 0, 800)
     dphi_ax = Bin("dphi", r"$\Delta\phi$", 50, 0, 3.5)
 
     items = {}
@@ -61,7 +62,7 @@ def get_accumulator(regions):
     items["dphijm"] = Hist("Counts", dataset_ax, region_ax, dphi_ax)
     items["mjj"] = Hist("Counts", dataset_ax, region_ax, mjj_ax)
     items["ht"] = Hist("Counts", dataset_ax, region_ax, ht_ax)
-    items["htmiss"] = Hist("Counts", dataset_ax, region_ax, ht_ax)
+    items["htmiss"] = Hist("Counts", dataset_ax, region_ax, mht_ax)
 
     for region in regions:
         if region == "inclusive":
