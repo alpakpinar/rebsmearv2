@@ -59,7 +59,7 @@ def parse_cli():
     args = parser.parse_args()
     return args
 
-def get_jer_source(dataset):
+def get_jer_source(dataset=''):
     if re.match('QCD.*HT.*', dataset):
         return 'jer_mc'
     return 'jer_data'
@@ -114,8 +114,8 @@ def run_rebsmear_job(files, dataset, treename='Events', test=False, jersource=No
     # Set output path to save files
     # Override the the default if we're using existing trees
     # In this case, save the coffea file in the same directory with the ROOT files.
-    if not do_rebalance:
-        outpath = os.path.dirname(outfiles[0])
+    # if not do_rebalance:
+        # outpath = os.path.dirname(outfiles[0])
 
     se.set_output_dir(outpath)
     se.analyze_files()
@@ -125,23 +125,38 @@ def run_rebsmear_job(files, dataset, treename='Events', test=False, jersource=No
 
 def do_run(args):
     """Run the R&S locally."""
-    # Run over all files associated to dataset
-    fileset = files_from_eos(regex=args.dataset)
+    # Run on readily rebalanced trees
+    if args.rebpath:
+        files = [pjoin(args.rebpath, p) for p in os.listdir(args.rebpath) if re.match('.*root', p)]
+        dataset = re.findall('JetHT_ver\d_2017[A-F]', files[0])[0]
 
-    ndatasets = len(fileset)
-    nfiles = sum([len(x) for x in fileset.values()])
-    print(f"Running over {ndatasets} datasets with a total of {nfiles} files.")
-
-    for dataset, files in fileset.items():
         run_rebsmear_job(
             files=files,
             dataset=dataset,
             treename='Events',
             test=args.testrun,
-            jersource=get_jer_source(args.dataset),
             outpath=args.outpath,
             rebalanced_tree_dir=args.rebpath
         )
+
+    else:
+        # Run over all files associated to dataset
+        fileset = files_from_eos(regex=args.dataset)
+    
+        ndatasets = len(fileset)
+        nfiles = sum([len(x) for x in fileset.values()])
+        print(f"Running over {ndatasets} datasets with a total of {nfiles} files.")
+    
+        for dataset, files in fileset.items():
+            run_rebsmear_job(
+                files=files,
+                dataset=dataset,
+                treename='Events',
+                test=args.testrun,
+                jersource=get_jer_source(args.dataset),
+                outpath=args.outpath,
+                rebalanced_tree_dir=args.rebpath
+            )
 
 def do_worker(args):
     '''Run the R&S on a worker node.'''

@@ -23,6 +23,7 @@ from rebsmearv2.rebalance.objects import Jet, JERLookup
 from rebsmearv2.helpers.paths import rebsmear_path
 from rebsmearv2.helpers.helpers import dphi, min_dphi_jet_met
 from rebsmearv2.helpers.dataset import is_data
+from tqdm import tqdm
 
 pjoin = os.path.join
 
@@ -303,6 +304,8 @@ class SmearExecutor():
         return runs['sumw'].array()[0], runs['sumw2'].array()[0]    
 
     def set_output_dir(self, outdir):
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
         self.outdir = outdir
 
     def _analyze_file(self, file, treename='Events', flatten=True):
@@ -333,5 +336,5 @@ class SmearExecutor():
         save(out, outpath)
 
     def analyze_files(self):
-        for file in self.files:
+        for file in tqdm(self.files):
             self._analyze_file(file)
