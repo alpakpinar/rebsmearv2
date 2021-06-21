@@ -44,8 +44,11 @@ def main():
         os.makedirs(outdir)
     outpath = pjoin(outdir, 'cutflow.txt')
     with open(outpath, 'w+') as f:
+        f.write(outtag)
+        f.write('\n')
+
         f.write(
-            tabulate(pcutflow, headers=['Cut', 'Number of Events', 'Acceptance'], floatfmt=[".0f", ".0f", ".3f"])
+            tabulate(pcutflow, headers=['Cut', 'Number of Events', 'Acceptance (%)'], floatfmt=[".0f", ".0f", ".3f"])
         )
 
     print(f'File saved: {outpath}')
