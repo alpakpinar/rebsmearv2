@@ -24,13 +24,14 @@ BINNINGS = {
     'ak4_phi0' : hist.Bin('jetphi',r'Leading AK4 jet $\phi$', 50, -np.pi, np.pi),
     'ak4_phi1' : hist.Bin('jetphi',r'Trailing AK4 jet $\phi$', 50, -np.pi, np.pi),
     'ht' : hist.Bin("ht", r"$H_{T}$ (GeV)", 50, 0, 4000),
-    'htmiss' : hist.Bin("ht", r"$H_{T}^{miss}$ (GeV)", 50, 0, 4000),
+    'htmiss' : hist.Bin("ht", r"$H_{T}^{miss}$ (GeV)", 80, 0, 800),
 }
 
 def parse_cli():
     parser = argparse.ArgumentParser()
     parser.add_argument('inpath', help='Path to merged coffea files.')
     parser.add_argument('--years', nargs='*', type=int, default=[2017,2018], help='Years to run on, default is both 17 and 18.')
+    parser.add_argument('--distribution', default='.*', help='Distribution to plot.')
     parser.add_argument('--region', default='.*', help='Regions to run on.')
     args = parser.parse_args()
     return args
@@ -68,6 +69,20 @@ def make_plot(acc, distribution, outdir='./output', region='sr_vbf', dataset='QC
             transform=ax.transAxes
         )
 
+        # Calculate % of events with HTmiss > 250 GeV
+        if distribution == 'htmiss':
+            centers = h.axis('ht').centers()
+            histo = _h.integrate('dataset')
+            sumw_all = np.sum(histo.values()[()]) 
+            sumw_high = np.sum(histo.values()[()][centers>250.])
+
+            ax.text(1., 1., f'$H_T^{{miss}} > 250 \\ GeV: {sumw_high/sumw_all * 100:.3f}\\%$',
+                fontsize=14,
+                ha='right',
+                va='bottom',
+                transform=ax.transAxes
+            )
+
         outpath = pjoin(outdir, f'{dataset}_{year}_{region}_{distribution}.pdf')
         fig.savefig(outpath)
         plt.close(fig)
@@ -95,14 +110,17 @@ def main():
 
     regions = [
         'inclusive',
-        # 'sr_vbf',
-        # 'cr_vbf_qcd'
+        'sr_vbf',
+        'cr_vbf_qcd'
     ]
     
     for region in regions:
         if not re.match(args.region, region):
             continue
         for distribution in distributions:
+            if not re.match(args.distribution, distribution):
+                continue
+            
             make_plot(acc, 
                 outdir=outdir, 
                 distribution=distribution,
