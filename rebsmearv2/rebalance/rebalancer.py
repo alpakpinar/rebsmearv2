@@ -49,11 +49,14 @@ class RebalanceExecutor():
         self.htprescale = htprescale
         self.dphiprescale = dphiprescale
 
-    def _trigger_preselection(self, tree, event, trigname='HLT_PFJet40'):
+    def _trigger_preselection(self, tree, event, triggers=['HLT_PFJet40']):
         '''Trigger pre-selection for the given event.'''
         n = event
-        trigval = tree[trigname].array(entrystart=n, entrystop=n+1)[0]
-        return trigval == 1
+        for trigname in triggers:
+            trigval = tree[trigname].array(entrystart=n, entrystop=n+1)[0]
+            if trigval == 1:
+                return True
+        return False
 
     def _jet_preselection(self, jet, ptmin=30, absetamax=5.0):
         '''Pre-selection for jets. Includes loose ID requirement (with minimum pt requirement) + HF shape cuts.'''
@@ -336,7 +339,13 @@ class RebalanceExecutor():
                 print(f'Time: {datetime.now() - time_init}')
 
             # Trigger selection
-            if not self._trigger_preselection(tree, event):
+            triggers = [
+                'HLT_PFJet40',
+                'HLT_PFJet60',
+                'HLT_PFJet80',
+                'HLT_PFJet140',
+            ]
+            if not self._trigger_preselection(tree, event, triggers=triggers):
                 continue
 
             # Check if the event contains a lepton or a photon, if so, veto the event
