@@ -333,9 +333,9 @@ class RebalanceExecutor():
         nJetMax = 15
         outtree = r.TTree('Events','Events')
 
-        run = array('i', [0])
-        luminosityBlock = array('i', [0])
-        eventnum = array('i', [0])
+        run = array('f', [0])
+        luminosityBlock = array('f', [0])
+        eventnum = array('f', [0])
 
         triggers = [
             'HLT_PFJet40',
