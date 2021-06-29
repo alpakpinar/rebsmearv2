@@ -472,8 +472,14 @@ class RebalanceExecutor():
             luminosityBlock[0] = tree['luminosityBlock'].array(entrystart=event, entrystop=event+1)[0]
             eventnum[0] = tree['event'].array(entrystart=event, entrystop=event+1)[0]
 
-            ps_weight = compute_prescale_weight(trigger_results, run[0], luminosityBlock[0])
-            weight_trigger_prescale[0] = ps_weight
+            # Try reading the prescale weight based on run and lumi.
+            # If we don't find a corresponding record, we move on.
+            try:
+                ps_weight = compute_prescale_weight(trigger_results, run[0], luminosityBlock[0])
+                weight_trigger_prescale[0] = ps_weight
+            except:
+                print(f'INFO: Could not find prescale records for event: {event}, skipping.')
+                continue
     
             # Store the prescale weight for later use
             # If no prescaling was done, weight would be just 1.
