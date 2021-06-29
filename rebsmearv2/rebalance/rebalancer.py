@@ -49,14 +49,15 @@ class RebalanceExecutor():
         self.htprescale = htprescale
         self.dphiprescale = dphiprescale
 
-    def _trigger_preselection(self, tree, event, triggers=['HLT_PFJet40']):
-        '''Trigger pre-selection for the given event.'''
+    def _trigger_results(self, tree, event, triggers=['HLT_PFJet40']):
+        '''Get a dictionary of values whether the given event passing each of the given triggers.'''
+        mapping = {}
         n = event
         for trigname in triggers:
             trigval = tree[trigname].array(entrystart=n, entrystop=n+1)[0]
-            if trigval == 1:
-                return True
-        return False
+            mapping[trigname] = trigval
+
+        return mapping
 
     def _jet_preselection(self, jet, ptmin=30, absetamax=5.0):
         '''Pre-selection for jets. Includes loose ID requirement (with minimum pt requirement) + HF shape cuts.'''
@@ -303,7 +304,18 @@ class RebalanceExecutor():
         # Set up the output tree to be saved
         nJetMax = 15
         outtree = r.TTree('Events','Events')
-        
+
+        run = array('i', [0])
+        luminosityBlock = array('i', [0])
+        eventnum = array('i', [0])
+
+        triggers = [
+            'HLT_PFJet40',
+            'HLT_PFJet60',
+            'HLT_PFJet80',
+            'HLT_PFJet140',
+        ]
+
         njet = array('i', [0])
         jet_pt = array('f',  [0.] * nJetMax)
         jet_eta = array('f', [0.] * nJetMax)
@@ -315,6 +327,10 @@ class RebalanceExecutor():
         weight = array('f', [0.])
     
         # Set up branches for the output ROOT file
+        outtree.Branch('run', run, 'run/I')
+        outtree.Branch('luminosityBlock', luminosityBlock, 'luminosityBlock/I')
+        outtree.Branch('event', eventnum, 'event/I')
+        
         outtree.Branch('nJet', njet, 'nJet/I')
         outtree.Branch('Jet_pt', jet_pt, 'Jet_pt[nJet]/F')
         outtree.Branch('Jet_eta', jet_eta, 'Jet_eta[nJet]/F')
@@ -323,6 +339,12 @@ class RebalanceExecutor():
         outtree.Branch('HTmiss', htmiss, 'HTmiss/F')
         outtree.Branch('HT', ht, 'HT/F')
         outtree.Branch('weight', weight, 'weight/F')
+
+        # Initialize trigger branches (P/F)
+        trig_arrays = {}
+        for t in triggers:
+            trig_arrays[t] = array('i', [0])
+            outtree.Branch(t, trig_arrays[t], f'{t}/I')
 
         # Loop over the events: Rebalance
         print('STARTING REBALANCING')
@@ -339,14 +361,14 @@ class RebalanceExecutor():
                 print(f'Time: {datetime.now() - time_init}')
 
             # Trigger selection
-            triggers = [
-                'HLT_PFJet40',
-                'HLT_PFJet60',
-                'HLT_PFJet80',
-                'HLT_PFJet140',
-            ]
-            if not self._trigger_preselection(tree, event, triggers=triggers):
+
+            trigger_results = self._trigger_results(tree, event, triggers=triggers)
+            # At least should pass one trigger
+            if not any(list(trigger_results.values())):
                 continue
+
+            for t, v in trigger_results.items():
+                trig_arrays[t][0] = v
 
             # Check if the event contains a lepton or a photon, if so, veto the event
             if self._event_contains_lepton(event, tree):
@@ -412,6 +434,10 @@ class RebalanceExecutor():
     
             htmiss[0] = ws.function('gen_htmiss_pt').getValV()
             ht[0] = ws.function('gen_ht').getValV()
+    
+            run[0] = tree['run'].array(entrystart=event, entrystop=event+1)[0]
+            luminosityBlock[0] = tree['luminosityBlock'].array(entrystart=event, entrystop=event+1)[0]
+            eventnum[0] = tree['event'].array(entrystart=event, entrystop=event+1)[0]
     
             # Store the prescale weight for later use
             # If no prescaling was done, weight would be just 1.
