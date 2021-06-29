@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+import os
+import pickle
 import numpy as np
 import pandas as pd
 from rebsmearv2.helpers.paths import rebsmear_path
@@ -25,6 +27,14 @@ def calc_mjj(jet1, jet2):
 
 def dataframe_for_trigger_prescale(trigger):
     '''Initiates the dataframe for trigger prescale weights.'''
+    # Optimization: If the df is already stored as a pkl file, read it from there (should be much faster)
+    # Otherwise, read from CSV file and store in a pkl file.
+    pkl_file = f'./prescales_{trigger}.pkl'
+    if os.path.exists(pkl_file):
+        return pd.read_pickle(pkl_file)
+    
     filepath = rebsmear_path(f'input/prescale/2017/prescales_{trigger}.csv')
     df = pd.read_csv(filepath)
+    pd.to_pickle(df, pkl_file)
+    
     return df
