@@ -405,13 +405,6 @@ class RebalanceExecutor():
             if self._event_contains_lepton(event, tree):
                 continue
 
-            # Compute the trigger prescale weight for this event
-            run[0] = tree['run'].array(entrystart=event, entrystop=event+1)[0]
-            luminosityBlock[0] = tree['luminosityBlock'].array(entrystart=event, entrystop=event+1)[0]
-            eventnum[0] = tree['event'].array(entrystart=event, entrystop=event+1)[0]
-
-            ps_weight = compute_prescale_weight(trigger_results, run[0], luminosityBlock[0])
-            weight_trigger_prescale[0] = ps_weight
 
             jets = self._read_jets(event, tree)
 
@@ -474,6 +467,13 @@ class RebalanceExecutor():
             htmiss[0] = ws.function('gen_htmiss_pt').getValV()
             ht[0] = ws.function('gen_ht').getValV()
     
+            # Compute the trigger prescale weight for this event
+            run[0] = tree['run'].array(entrystart=event, entrystop=event+1)[0]
+            luminosityBlock[0] = tree['luminosityBlock'].array(entrystart=event, entrystop=event+1)[0]
+            eventnum[0] = tree['event'].array(entrystart=event, entrystop=event+1)[0]
+
+            ps_weight = compute_prescale_weight(trigger_results, run[0], luminosityBlock[0])
+            weight_trigger_prescale[0] = ps_weight
     
             # Store the prescale weight for later use
             # If no prescaling was done, weight would be just 1.
