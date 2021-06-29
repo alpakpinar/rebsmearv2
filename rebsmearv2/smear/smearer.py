@@ -21,7 +21,7 @@ from datetime import date
 from array import array
 from rebsmearv2.rebalance.objects import Jet, JERLookup
 from rebsmearv2.helpers.paths import rebsmear_path
-from rebsmearv2.helpers.helpers import dphi, min_dphi_jet_met
+from rebsmearv2.helpers.helpers import dphi, min_dphi_jet_met, dataframe_for_trigger_prescale
 from rebsmearv2.helpers.dataset import is_data
 from tqdm import tqdm
 
@@ -297,11 +297,15 @@ class SmearExecutor():
         self.ntoys = ntoys
         # Event weight is calculated as (prescale weight HLT_PFJet40) / (num toys)
         # NOTE: Private prescaling weight will be added to this variable as we process
-        self.eventweight = psweight / ntoys
+        self.weight_toys = 1 / ntoys
 
     def _read_sumw_sumw2(self, file):
         runs = uproot.open(file)['Runs']
         return runs['sumw'].array()[0], runs['sumw2'].array()[0]    
+
+    def _read_ps_weight(self,df):
+        '''Read the run&lumi based prescale weight.'''
+        pass
 
     def set_output_dir(self, outdir):
         if not os.path.exists(outdir):
@@ -325,8 +329,8 @@ class SmearExecutor():
         if not df['is_data']:
             df['sumw'], df['sumw2'] = self._read_sumw_sumw2(file)
 
-
-        eventweight = self.eventweight * df['weight']
+        # Event weight is: PS weight / Ntoys
+        eventweight = self.weight_toys * df['weight_trigger_prescale']
 
         processor_instance = CoffeaSmearer(eventweight=eventweight, ntoys=self.ntoys)
         out = processor_instance.process(df)

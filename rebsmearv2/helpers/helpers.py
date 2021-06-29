@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
+import pandas as pd
+from rebsmearv2.helpers.paths import rebsmear_path
 
 def dphi(phi1, phi2):
     """Calculates delta phi between objects"""
@@ -20,3 +22,9 @@ def calc_mjj(jet1, jet2):
     dphi = np.cos(jet1.phi - jet2.phi)
 
     return np.sqrt(2 * jet1.pt * jet2.pt * (deta - dphi))
+
+def dataframe_for_trigger_prescale(trigger):
+    '''Initiates the dataframe for trigger prescale weights.'''
+    filepath = f'./input/prescale/2017/prescales_{trigger}.csv'
+    df = pd.read_csv(filepath)
+    return df

@@ -17,10 +17,38 @@ from scipy.stats import expon, rv_histogram
 from rebsmearv2.rebalance.objects import Jet, RebalanceWSFactory, JERLookup
 from rebsmearv2.helpers.paths import rebsmear_path
 from rebsmearv2.helpers.dataset import is_data
-from rebsmearv2.helpers.helpers import dphi, calc_mjj
+from rebsmearv2.helpers.helpers import dphi, calc_mjj, dataframe_for_trigger_prescale
 from pprint import pprint
 
 pjoin = os.path.join
+
+def compute_prescale_weight(trigger_results, run, luminosityBlock):
+    '''Given the event and list of trigger results, determine the trigger an event passes with the highest threshold.'''
+    def decide_trigger_order(trigger):
+        return int(re.findall('\d+', trigger)[0])
+
+    # Here's how we'll determine the prescale weights:
+    # For each event, determine the trigger with the highest threshold for which it is passing
+    # Read the PS values as a function of (run,lumi) for that trigger
+
+    # Sort the triggers according to the pt thresholds (in descending order)
+    sorted_triggers = sorted(trigger_results.keys(), key=decide_trigger_order, reverse=True)
+
+    # Determine the highest one passing
+    trigger_to_look = None
+
+    for t in sorted_triggers:
+        if trigger_results[t] == 1:
+            trigger_to_look = t
+            break
+    
+    if trigger_to_look is None:
+        raise RuntimeError('No trigger has passed for this event, this should not happen!')
+        
+    # Finally, determine the prescale weight
+    df_ps = dataframe_for_trigger_prescale(trigger_to_look)
+    w = df_ps.loc[(df_ps['Run'] == run) & (df_ps['LumiSection'] == luminosityBlock)]['Prescale']
+    return w.iloc[0]
 
 class RebalanceExecutor():
     '''
@@ -325,6 +353,8 @@ class RebalanceExecutor():
         ht = array('f', [0.])
         # Weight for HT based prescaling
         weight = array('f', [0.])
+        # Weight for trigger prescaling
+        weight_trigger_prescale = array('f', [0.])
     
         # Set up branches for the output ROOT file
         outtree.Branch('run', run, 'run/I')
@@ -339,6 +369,7 @@ class RebalanceExecutor():
         outtree.Branch('HTmiss', htmiss, 'HTmiss/F')
         outtree.Branch('HT', ht, 'HT/F')
         outtree.Branch('weight', weight, 'weight/F')
+        outtree.Branch('weight_trigger_prescale', weight_trigger_prescale, 'weight_trigger_prescale/F')
 
         # Initialize trigger branches (P/F)
         trig_arrays = {}
@@ -373,6 +404,14 @@ class RebalanceExecutor():
             # Check if the event contains a lepton or a photon, if so, veto the event
             if self._event_contains_lepton(event, tree):
                 continue
+
+            # Compute the trigger prescale weight for this event
+            run[0] = tree['run'].array(entrystart=event, entrystop=event+1)[0]
+            luminosityBlock[0] = tree['luminosityBlock'].array(entrystart=event, entrystop=event+1)[0]
+            eventnum[0] = tree['event'].array(entrystart=event, entrystop=event+1)[0]
+
+            ps_weight = compute_prescale_weight(trigger_results, run[0], luminosityBlock[0])
+            weight_trigger_prescale[0] = ps_weight
 
             jets = self._read_jets(event, tree)
 
@@ -435,9 +474,6 @@ class RebalanceExecutor():
             htmiss[0] = ws.function('gen_htmiss_pt').getValV()
             ht[0] = ws.function('gen_ht').getValV()
     
-            run[0] = tree['run'].array(entrystart=event, entrystop=event+1)[0]
-            luminosityBlock[0] = tree['luminosityBlock'].array(entrystart=event, entrystop=event+1)[0]
-            eventnum[0] = tree['event'].array(entrystart=event, entrystop=event+1)[0]
     
             # Store the prescale weight for later use
             # If no prescaling was done, weight would be just 1.
