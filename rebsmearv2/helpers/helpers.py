@@ -25,6 +25,6 @@ def calc_mjj(jet1, jet2):
 
 def dataframe_for_trigger_prescale(trigger):
     '''Initiates the dataframe for trigger prescale weights.'''
-    filepath = f'./input/prescale/2017/prescales_{trigger}.csv'
+    filepath = rebsmear_path(f'input/prescale/2017/prescales_{trigger}.csv')
     df = pd.read_csv(filepath)
     return df
