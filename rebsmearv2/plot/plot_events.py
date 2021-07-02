@@ -5,12 +5,13 @@ import sys
 import re
 import math
 import argparse
+import uproot
 import numpy as np
 import mplhep as hep
 
 from matplotlib import pyplot as plt
 from coffea import hist
-from rebsmearv2.plot.util import scale_xs_lumi_sumw, rs_merge_datasets
+from rebsmearv2.plot.util import scale_xs_lumi_sumw, rs_merge_datasets, URTH1
 from klepto.archives import dir_archive
 from pprint import pprint
 
@@ -53,6 +54,10 @@ def make_plot(acc, distribution, outdir='./output', region='sr_vbf', dataset='QC
 
     h = h.integrate('region', region)
 
+    # Save the mjj shape to an output ROOT file
+    if distribution == 'mjj' and region == 'sr_vbf':
+        outrootfile = uproot.recreate(pjoin(outdir, 'rebsmear_qcd_estimate.root'))
+
     for year in years:
         fig, ax = plt.subplots()
         _h = h[re.compile(f'{dataset}.*{year}')].integrate('dataset')
@@ -81,9 +86,8 @@ def make_plot(acc, distribution, outdir='./output', region='sr_vbf', dataset='QC
         # Calculate % of events with HTmiss > 250 GeV
         if distribution == 'htmiss':
             centers = h.axis('ht').centers()
-            histo = _h.integrate('dataset')
-            sumw_all = np.sum(histo.values()[()]) 
-            sumw_high = np.sum(histo.values()[()][centers>250.])
+            sumw_all = np.sum(_h.values()[()]) 
+            sumw_high = np.sum(_h.values()[()][centers>250.])
 
             ax.text(1., 1., f'$H_T^{{miss}} > 250 \\ GeV: {sumw_high/sumw_all * 100:.3f}\\%$',
                 fontsize=14,
@@ -91,6 +95,9 @@ def make_plot(acc, distribution, outdir='./output', region='sr_vbf', dataset='QC
                 va='bottom',
                 transform=ax.transAxes
             )
+
+        if distribution == 'mjj' and region == 'sr_vbf':
+            outrootfile[f'rebsmear_qcd_{year}'] = URTH1(edges=xedges, sumw=sumw, sumw2=sumw2)
 
         outpath = pjoin(outdir, f'{dataset}_{year}_{region}_{distribution}.pdf')
         fig.savefig(outpath)

@@ -8,6 +8,8 @@ import yaml
 import argparse
 import numpy as np
 import uproot
+import uproot_methods.classes.TH1
+import types
 
 from collections import defaultdict
 from matplotlib import pyplot as plt
@@ -79,3 +81,24 @@ def rs_merge_datasets(histogram):
     histogram = histogram.group("dataset",hist.Cat("dataset", "Primary dataset"),  mapping)
 
     return histogram
+
+class URTH1(uproot_methods.classes.TH1.Methods, list):
+    def __init__(self, edges, sumw, sumw2, title=""):
+        self._fXaxis = types.SimpleNamespace()
+        self._fXaxis._fNbins = len(edges)-1
+        self._fXaxis._fXmin = edges[0]
+        self._fXaxis._fXmax = edges[-1]
+
+        self._fXaxis._fXbins = edges.astype(">f8")
+
+        centers = (edges[:-1] + edges[1:]) / 2.0
+        self._fEntries = self._fTsumw = self._fTsumw2 = sumw[1:-1].sum()
+        self._fTsumwx = (sumw * centers).sum()
+        self._fTsumwx2 = (sumw * centers**2).sum()
+
+        self._fName = title
+        self._fTitle = title
+
+        self.extend(sumw.astype(">f8"))
+        self._classname = "TH1D"
+        self._fSumw2 = sumw2.astype(">f8")
