@@ -97,6 +97,9 @@ def make_plot(acc, distribution, outdir='./output', region='sr_vbf', dataset='QC
             )
 
         if distribution == 'mjj' and region == 'sr_vbf':
+            # Underflow + overflow bins = 0
+            sumw = np.r_[0, sumw, 0]
+            sumw2 = np.r_[0, sumw2*Ntoys, 0]
             outrootfile[f'rebsmear_qcd_{year}'] = URTH1(edges=xedges, sumw=sumw, sumw2=sumw2)
 
         outpath = pjoin(outdir, f'{dataset}_{year}_{region}_{distribution}.pdf')

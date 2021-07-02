@@ -93,8 +93,8 @@ class URTH1(uproot_methods.classes.TH1.Methods, list):
 
         centers = (edges[:-1] + edges[1:]) / 2.0
         self._fEntries = self._fTsumw = self._fTsumw2 = sumw[1:-1].sum()
-        self._fTsumwx = (sumw * centers).sum()
-        self._fTsumwx2 = (sumw * centers**2).sum()
+        self._fTsumwx = (sumw[1:-1] * centers).sum()
+        self._fTsumwx2 = (sumw2[1:-1] * centers**2).sum()
 
         self._fName = title
         self._fTitle = title
