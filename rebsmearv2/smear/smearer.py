@@ -309,30 +309,41 @@ class SmearExecutor():
             os.makedirs(outdir)
         self.outdir = outdir
 
-    def _analyze_file(self, file, treename='Events', flatten=True):
+    def _analyze_file(self, file, treename='Events', chunksize=15, flatten=True):
         '''
         Analyze a single file. Reads the "Events" tree and converts it into a LazyDataFrame.
         This df is then passed onto the RSPostProcessor.
         '''
         t = uproot.open(file)[treename]
-        df = LazyDataFrame(t, flatten=flatten)
+        numevents = len(t)
+
+        chunks = []
+        nchunks = numevents // chunksize + 1
+        for ichunk in range(nchunks):
+            dfchunk = LazyDataFrame(t, 
+                    entrystart=ichunk * chunksize, 
+                    entrystop=(ichunk+1) * chunksize,
+                    flatten=flatten
+                    )
+            chunks.append(dfchunk)
         
-        # Dataset name from the filename
-        df['dataset'] = re.sub('_rebalanced_tree_(\d+).root', '', os.path.basename(file))
-        df['is_data'] = is_data(df['dataset'])
-        
-        if not df['is_data']:
-            df['sumw'], df['sumw2'] = self._read_sumw_sumw2(file)
-
-        # Event weight is: PS weight / Ntoys
-        eventweight = self.weight_toys * df['weight_trigger_prescale']
-
-        processor_instance = CoffeaSmearer(eventweight=eventweight, ntoys=self.ntoys)
-        out = processor_instance.process(df)
-
-        # Save the output file
-        outpath = pjoin(self.outdir, f'rebsmear_{df["dataset"]}_{self.ichunk}.coffea')
-        save(out, outpath)
+        for numchunk, df in enumerate(chunks):
+            # Dataset name from the filename
+            df['dataset'] = re.sub('_rebalanced_tree_(\d+).root', '', os.path.basename(file))
+            df['is_data'] = is_data(df['dataset'])
+            
+            if not df['is_data']:
+                df['sumw'], df['sumw2'] = self._read_sumw_sumw2(file)
+    
+            # Event weight is: PS weight / Ntoys
+            eventweight = self.weight_toys * df['weight_trigger_prescale']
+    
+            processor_instance = CoffeaSmearer(eventweight=eventweight, ntoys=self.ntoys)
+    
+            out = processor_instance.process(df)
+            # Save the output file
+            outpath = pjoin(self.outdir, f'rebsmear_{df["dataset"]}_{self.ichunk}_{numchunk:03d}of{nchunks:03d}.coffea')
+            save(out, outpath)
 
     def analyze_files(self):
         for file in tqdm(self.files):
