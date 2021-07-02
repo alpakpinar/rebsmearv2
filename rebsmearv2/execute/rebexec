@@ -4,7 +4,7 @@ import re
 import math
 import htcondor
 import argparse
-from datetime import date
+from datetime import date, datetime
 from pprint import pprint
 from collections import defaultdict
 from multiprocessing.pool import Pool
@@ -107,6 +107,9 @@ def run_rebsmear_job(files, dataset, treename='Events', test=False, jersource=No
     # one MUST specify the set of files.
     else:
         outfiles = [pjoin(rebalanced_tree_dir, p) for p in os.listdir(rebalanced_tree_dir) if re.match('.*root', p)]
+
+    print('Rebalancing done')
+    print(f'Starting smearing step: {datetime.now().strftime("%H:%M:%S")}')
 
     # Step 2: Smearing + accumulating
     se = SmearExecutor(files=outfiles)
