@@ -177,6 +177,7 @@ def do_worker(args):
 
     run_rebsmear_job(
         files=files,
+        ichunk=args.chunk,
         dataset=args.dataset,
         treename='Events',
         jersource=get_jer_source(args.dataset),
