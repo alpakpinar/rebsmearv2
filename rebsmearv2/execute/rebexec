@@ -71,7 +71,7 @@ def chunk_by_files(items, nchunk):
         chunks[i % nchunk].append(items[i])
     return chunks
 
-def run_rebsmear_job(files, dataset, treename='Events', test=False, jersource=None, outpath=None, rebalanced_tree_dir=None):
+def run_rebsmear_job(files, ichunk, dataset, treename='Events', test=False, jersource=None, outpath=None, rebalanced_tree_dir=None):
     '''
     Wrapper function to run a complete rebalance and smear job.
     Goes through the following steps:
@@ -92,7 +92,8 @@ def run_rebsmear_job(files, dataset, treename='Events', test=False, jersource=No
     if do_rebalance:
         jersource = get_jer_source(dataset)
         # Step 1: Rebalancing
-        e = RebalanceExecutor(files=files, 
+        e = RebalanceExecutor(files=files,
+                ichunk=ichunk, 
                 dataset=dataset, 
                 treename='Events', 
                 test=test,
@@ -112,7 +113,7 @@ def run_rebsmear_job(files, dataset, treename='Events', test=False, jersource=No
     print(f'Starting smearing step: {datetime.now().strftime("%H:%M:%S")}')
 
     # Step 2: Smearing + accumulating
-    se = SmearExecutor(files=outfiles)
+    se = SmearExecutor(files=outfiles, ichunk=ichunk)
 
     # Set output path to save files
     # Override the the default if we're using existing trees
@@ -135,6 +136,7 @@ def do_run(args):
 
         run_rebsmear_job(
             files=files,
+            ichunk=0,
             dataset=dataset,
             treename='Events',
             test=args.testrun,
@@ -150,9 +152,10 @@ def do_run(args):
         nfiles = sum([len(x) for x in fileset.values()])
         print(f"Running over {ndatasets} datasets with a total of {nfiles} files.")
     
-        for dataset, files in fileset.items():
+        for idx, (dataset, files) in enumerate(fileset.items()):
             run_rebsmear_job(
                 files=files,
+                ichunk=idx,
                 dataset=dataset,
                 treename='Events',
                 test=args.testrun,

@@ -290,8 +290,9 @@ class SmearExecutor():
     INPUT: Set of ROOT files containing event information stored as TTrees.
     OUTPUT: Set of coffea files containing histograms with smeared events.
     '''
-    def __init__(self, files, ntoys=int(1e3), psweight=5):
+    def __init__(self, files, ichunk, ntoys=int(1e3), psweight=5):
         self.files = files
+        self.ichunk = ichunk
         # Number of toys, this many events will be generated per rebalanced event
         # (1 event = 1 smearing)
         self.ntoys = ntoys
@@ -324,8 +325,6 @@ class SmearExecutor():
         df['dataset'] = re.sub('_rebalanced_tree_(\d+).root', '', os.path.basename(file))
         df['is_data'] = is_data(df['dataset'])
         
-        ichunk = re.findall('tree_(\d+).root', os.path.basename(file))[0]
-
         if not df['is_data']:
             df['sumw'], df['sumw2'] = self._read_sumw_sumw2(file)
 
@@ -336,7 +335,7 @@ class SmearExecutor():
         out = processor_instance.process(df)
 
         # Save the output file
-        outpath = pjoin(self.outdir, f'rebsmear_{df["dataset"]}_{ichunk}.coffea')
+        outpath = pjoin(self.outdir, f'rebsmear_{df["dataset"]}_{self.ichunk}.coffea')
         save(out, outpath)
 
     def analyze_files(self):

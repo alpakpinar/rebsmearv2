@@ -58,7 +58,8 @@ class RebalanceExecutor():
     OUTPUT: Produces ROOT files with rebalanced event information saved.
     '''
     def __init__(self, 
-            files, 
+            files,
+            ichunk,
             dataset, 
             treename, 
             test=False, 
@@ -67,6 +68,7 @@ class RebalanceExecutor():
             dphiprescale=False
             ):
         self.files = files
+        self.ichunk = ichunk
         self.dataset = dataset
         self.treename = treename
         # Test mode: Only run on the first 10 events from the first 5 files
@@ -311,10 +313,9 @@ class RebalanceExecutor():
 
         # Extract dataset name from the input path
         datasetname = filepath.split('/')[-4]
-        treename = filepath.split('/')[-1].replace('.root','')
 
         # Set up output ROOT file
-        outpath = pjoin(self.outdir, f"{datasetname}_rebalanced_{treename}.root")
+        outpath = pjoin(self.outdir, f"{datasetname}_rebalanced_tree_{self.ichunk}.root")
         f = r.TFile(outpath,"RECREATE")
     
         if not is_data(self.dataset):
