@@ -304,10 +304,6 @@ class SmearExecutor():
         runs = uproot.open(file)['Runs']
         return runs['sumw'].array()[0], runs['sumw2'].array()[0]    
 
-    def _read_ps_weight(self,df):
-        '''Read the run&lumi based prescale weight.'''
-        pass
-
     def set_output_dir(self, outdir):
         if not os.path.exists(outdir):
             os.makedirs(outdir)
