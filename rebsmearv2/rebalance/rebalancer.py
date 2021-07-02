@@ -331,7 +331,7 @@ class RebalanceExecutor():
             t_runs.Write()
 
         # Set up the output tree to be saved
-        nJetMax = 15
+        nJetMax = 20
         outtree = r.TTree('Events','Events')
 
         run = array('f', [0])
