@@ -372,6 +372,10 @@ class RebalanceWSFactory(NamingMixin):
         '''Given the GEN-HT of the event, figure out which HT bin it corresponds to.'''
         # Binning of the prior in terms of HT
         htbins = [100, 300, 500, 700, 900, 1300, 2000, 5000]
+        # For HT > 5 TeV, use the prior for the highest HT bin
+        if gen_ht > 5000:
+            return '2000_to_5000'
+        
         for idx in range(len(htbins)-1):
             lo = htbins[idx]
             hi = htbins[idx+1]
