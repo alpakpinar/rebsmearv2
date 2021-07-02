@@ -6,6 +6,7 @@ import re
 import math
 import argparse
 import numpy as np
+import mplhep as hep
 
 from matplotlib import pyplot as plt
 from coffea import hist
@@ -54,9 +55,17 @@ def make_plot(acc, distribution, outdir='./output', region='sr_vbf', dataset='QC
 
     for year in years:
         fig, ax = plt.subplots()
-        _h = h[re.compile(f'{dataset}.*{year}')]
-        hist.plot1d(_h, ax=ax, binwnorm=1, overlay='dataset')
-    
+        _h = h[re.compile(f'{dataset}.*{year}')].integrate('dataset')
+        
+        sumw, sumw2 = _h.values(sumw2=True)[()]
+        xedges = _h.axes()[0].edges()
+
+        # Correct for sumw2 with all the toys
+        Ntoys = 1e3
+        yerr=np.sqrt(sumw2*Ntoys)
+        hep.histplot(sumw, xedges, yerr=yerr, binwnorm=1, label=f'{dataset} {year}')
+
+        ax.legend(title='Dataset')
         ax.set_yscale('log')
         ax.set_ylim(1e-4,1e8)
         ax.set_ylabel('Events / GeV')
