@@ -309,7 +309,7 @@ class SmearExecutor():
             os.makedirs(outdir)
         self.outdir = outdir
 
-    def _analyze_file(self, file, treename='Events', chunksize=15, flatten=True):
+    def _analyze_file(self, file, treename='Events', chunksize=1000, flatten=True):
         '''
         Analyze a single file. Reads the "Events" tree and converts it into a LazyDataFrame.
         This df is then passed onto the RSPostProcessor.

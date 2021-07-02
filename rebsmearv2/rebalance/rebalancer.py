@@ -48,7 +48,8 @@ def compute_prescale_weight(trigger_results, run, luminosityBlock):
     # Finally, determine the prescale weight
     df_ps = dataframe_for_trigger_prescale(trigger_to_look)
     w = df_ps.loc[(df_ps['Run'] == run) & (df_ps['LumiSection'] == luminosityBlock)]['Prescale']
-    return w.iloc[0]
+    assert(len(w) == 1)
+    return w.iloc[0], int(re.findall('\d+', trigger_to_look)[0])
 
 class RebalanceExecutor():
     '''
@@ -363,6 +364,9 @@ class RebalanceExecutor():
         # Weight for trigger prescaling
         weight_trigger_prescale = array('f', [0.])
     
+        # Store the trigger that is used for prescale weight calculation
+        trigger_thresh_for_ps = array('i', [0])
+
         # Set up branches for the output ROOT file
         outtree.Branch('run', run, 'run/I')
         outtree.Branch('luminosityBlock', luminosityBlock, 'luminosityBlock/I')
@@ -377,6 +381,7 @@ class RebalanceExecutor():
         outtree.Branch('HT', ht, 'HT/F')
         outtree.Branch('weight', weight, 'weight/F')
         outtree.Branch('weight_trigger_prescale', weight_trigger_prescale, 'weight_trigger_prescale/F')
+        outtree.Branch('trigger_thresh_for_ps', trigger_thresh_for_ps, 'trigger_thresh_for_ps/I')
 
         # Initialize trigger branches (P/F)
         trig_arrays = {}
@@ -482,8 +487,9 @@ class RebalanceExecutor():
             # Try reading the prescale weight based on run and lumi.
             # If we don't find a corresponding record, we move on.
             try:
-                ps_weight = compute_prescale_weight(trigger_results, run[0], luminosityBlock[0])
+                ps_weight, trigger_thresh_for_ps_weight = compute_prescale_weight(trigger_results, run[0], luminosityBlock[0])
                 weight_trigger_prescale[0] = ps_weight
+                trigger_thresh_for_ps[0] = trigger_thresh_for_ps_weight
             except:
                 print(f'INFO: Could not find prescale records for event: {event}, skipping.')
                 continue
