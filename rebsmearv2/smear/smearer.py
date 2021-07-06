@@ -318,7 +318,11 @@ class SmearExecutor():
         numevents = len(t)
 
         chunks = []
-        nchunks = numevents // chunksize + 1
+        if numevents % chunksize == 0:
+            nchunks = numevents // chunksize
+        else:
+            nchunks = numevents // chunksize + 1
+        
         for ichunk in range(nchunks):
             dfchunk = LazyDataFrame(t, 
                     entrystart=ichunk * chunksize, 
