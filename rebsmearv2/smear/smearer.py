@@ -97,7 +97,7 @@ def read_resolution(ak4, jersource):
     return sigma
 
 class CoffeaSmearer(processor.ProcessorABC):
-    def __init__(self, eventweight, ntoys=100, jersource='jer_mc'):
+    def __init__(self, eventweight, ntoys, jersource='jer_mc'):
         self._setup_regions()
         self._accumulator = get_accumulator(self.regions)
         self.ntoys = ntoys
