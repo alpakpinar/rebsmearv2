@@ -98,7 +98,7 @@ def stack_plot_qcd_cr(acc, distribution, region='cr_vbf_qcd_rs', year=2017, rs_f
     xedges = h.integrate('dataset').axes()[0].edges()
     xcenters = h.integrate('dataset').axes()[0].centers()
 
-    hep.histplot(h_rs.values, h_rs.edges, ax=ax, binwnorm=1, label='R&S QCD Estimate')
+    hep.histplot(h_rs.values, h_rs.edges, yerr=np.sqrt(h_rs.variances), ax=ax, binwnorm=1, label='R&S QCD Estimate')
 
     ax.set_yscale('log')
     ax.set_ylim(1e-4,1e6)
