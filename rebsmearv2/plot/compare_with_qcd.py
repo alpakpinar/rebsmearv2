@@ -14,15 +14,15 @@ from pprint import pprint
 pjoin = os.path.join
 
 def main():
-    rebsmear_file = uproot.open(
-        rebsmear_path('plot/output/merged_2021-07-01_rebsmear_v2_run/rebsmear_qcd_estimate.root')
-    )
+    # Compare the QCD template from R&S and IC
+    rspath = rebsmear_path('plot/output/merged_2021-07-05_rebsmear_v2_run_PFJet40_suppress/rebsmear_qcd_estimate.root')
+    rebsmear_file = uproot.open(rspath)
 
     qcd_file = uproot.open(
         rebsmear_path('input/qcd_from_ic/out_MTR_2017.root_qcdDD.root')
     )
 
-    outdir = 'output/merged_2021-07-01_rebsmear_v2_run'
+    outdir = os.path.dirname(rspath)
 
     h_qcd = qcd_file['rebin_QCD_hist_counts']
     h_rebsmear = rebsmear_file['rebsmear_qcd_2017']
