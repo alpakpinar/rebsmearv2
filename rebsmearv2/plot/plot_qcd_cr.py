@@ -84,33 +84,21 @@ def stack_plot_qcd_cr(acc, distribution, region='cr_vbf_qcd_rs', year=2017, rs_f
     )
     
     # Non QCD MC in QCD CR
-    datasets = list(map(str, h[mc].identifiers('dataset')))
-    plot_info = {
-        'label' : datasets,
-        'sumw' : [],
-    }
+    hist.plot1d(h[mc], 
+        ax=ax, 
+        overlay='dataset', 
+        binwnorm=1, 
+        stack=True,
+        clear=False
+    )
 
-
-    for dataset in datasets:
-        sumw = h.integrate('dataset', dataset).values()[()]
-        plot_info['sumw'].append(sumw)
-
-    # Include the R&S QCD estimate in the stack plot
     if rs_filepath:
-        h_rs = uproot.open(rs_filepath)[f'rebsmear_qcd_{year}_CR']
-        plot_info['label'].append('R&S QCD Estimate')
-        plot_info['sumw'].append(h_rs.values)
+        h_rs = uproot.open(rs_filepath)[f'rebsmear_qcd_{year}_CR']    
 
     xedges = h.integrate('dataset').axes()[0].edges()
     xcenters = h.integrate('dataset').axes()[0].centers()
 
-    hep.histplot(plot_info['sumw'], xedges, 
-        ax=ax,
-        label=plot_info['label'], 
-        histtype='fill',
-        binwnorm=1,
-        stack=True
-        )
+    hep.histplot(h_rs.values, h_rs.edges, ax=ax, binwnorm=1, label='R&S QCD Estimate')
 
     ax.set_yscale('log')
     ax.set_ylim(1e-4,1e6)
@@ -137,10 +125,6 @@ def stack_plot_qcd_cr(acc, distribution, region='cr_vbf_qcd_rs', year=2017, rs_f
     sumw_data, sumw2_data = h[data].integrate('dataset').values(sumw2=True)[()]
     sumw_mc, sumw2_mc = h[mc].integrate('dataset').values(sumw2=True)[()]
     
-    if rs_filepath:
-        sumw_mc += h_rs.values
-        sumw2_mc += h_rs.variances
-
     r = sumw_data / sumw_mc
 
     rerr = np.abs(
@@ -149,7 +133,7 @@ def stack_plot_qcd_cr(acc, distribution, region='cr_vbf_qcd_rs', year=2017, rs_f
 
     rax.errorbar(xcenters, r, yerr=rerr, marker='o', ls='', color='k')
     rax.grid(True)
-    rax.set_ylabel('Data / Prediction')
+    rax.set_ylabel('Data / Non-QCD MC')
     rax.set_ylim(0,2)
 
     rax.yaxis.set_ticks_position('both')
