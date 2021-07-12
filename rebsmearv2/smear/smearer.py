@@ -34,6 +34,9 @@ Hist = hist.Hist
 def accu_int():
     return processor.defaultdict_accumulator(int)
 
+def empty_column_accumulator_float16():
+    return processor.column_accumulator(np.array([],dtype=np.float16))
+
 def get_accumulator(regions):
     dataset_ax = Cat("dataset", "Primary dataset")
     region_ax = Cat("region", "Selection region")
@@ -46,8 +49,6 @@ def get_accumulator(regions):
     ht_ax = Bin("ht", r"$H_{T}$ (GeV)", 100, 0, 4000)
     mht_ax = Bin("ht", r"$H_{T}$ (GeV)", 80, 0, 800)
     dphi_ax = Bin("dphi", r"$\Delta\phi$", 50, 0, 3.5)
-
-    prescale_weight_ax = Bin("weight_value", "Trigger Prescale Weight",100,0,int(1e6))
 
     items = {}
     
@@ -67,9 +68,7 @@ def get_accumulator(regions):
     items["ht"] = Hist("Counts", dataset_ax, region_ax, ht_ax)
     items["htmiss"] = Hist("Counts", dataset_ax, region_ax, mht_ax)
 
-    items['prescale_weight'] = Hist("Counts", dataset_ax, region_ax, prescale_weight_ax)
-
-    items['high_ps_events'] = processor.defaultdict_accumulator(list)
+    items['high_ps_events'] = processor.defaultdict_accumulator(empty_column_accumulator_float16)
 
     for region in regions:
         if region == "inclusive":
@@ -268,18 +267,18 @@ class CoffeaSmearer(processor.ProcessorABC):
             if region == 'sr_vbf':
                 psmask = trigger_ps_weight[mask] > 1e5
                 
-                output['high_ps_events']['ht'] = [ht[mask][psmask]]
-                output['high_ps_events']['htmiss'] = [htmiss[mask][psmask]]
-                output['high_ps_events']['met_phi'] = [met_phi[mask][psmask]]
-                output['high_ps_events']['mjj'] = [mjj[mask][psmask]]
-                output['high_ps_events']['dphijm'] = [dphijm[mask][psmask]]
+                output['high_ps_events']['ht'] += processor.column_accumulator(np.float16(ht[mask][psmask]))
+                output['high_ps_events']['htmiss'] += processor.column_accumulator(np.float16(htmiss[mask][psmask]))
+                output['high_ps_events']['met_phi'] += processor.column_accumulator(np.float16(met_phi[mask][psmask]))
+                output['high_ps_events']['mjj'] += processor.column_accumulator(np.float16(mjj[mask][psmask]))
+                output['high_ps_events']['dphijm'] += processor.column_accumulator(np.float16(dphijm[mask][psmask]))
                 
-                output['high_ps_events']['ak4_pt0'] = [diak4.i0.pt[mask][psmask]]
-                output['high_ps_events']['ak4_eta0'] = [diak4.i0.eta[mask][psmask]]
-                output['high_ps_events']['ak4_pt1'] = [diak4.i1.pt[mask][psmask]]
-                output['high_ps_events']['ak4_eta1'] = [diak4.i1.eta[mask][psmask]]
+                output['high_ps_events']['ak4_pt0'] = processor.column_accumulator(np.float16(diak4.i0.pt[mask][psmask]))
+                output['high_ps_events']['ak4_eta0'] = processor.column_accumulator(np.float16(diak4.i0.eta[mask][psmask]))
+                output['high_ps_events']['ak4_pt1'] = processor.column_accumulator(np.float16(diak4.i1.pt[mask][psmask]))
+                output['high_ps_events']['ak4_eta1'] = processor.column_accumulator(np.float16(diak4.i1.eta[mask][psmask]))
                 
-                output['high_ps_events']['ps_weight'] = [trigger_ps_weight[mask][psmask]]
+                output['high_ps_events']['ps_weight'] = processor.column_accumulator(np.float16(trigger_ps_weight[mask][psmask]))
 
             def ezfill(name, **kwargs):
                 """Helper function to make filling easier."""
@@ -302,8 +301,6 @@ class CoffeaSmearer(processor.ProcessorABC):
             ezfill('ht',       ht=ht[mask],          weight=weight[mask] )
             ezfill('htmiss',   ht=htmiss[mask],      weight=weight[mask] )
             ezfill('dphijm',   dphi=dphijm[mask],    weight=weight[mask] )
-
-            ezfill('prescale_weight',   weight_value=weight[mask])
 
         return output
 
