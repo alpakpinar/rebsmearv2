@@ -47,6 +47,8 @@ def get_accumulator(regions):
     mht_ax = Bin("ht", r"$H_{T}$ (GeV)", 80, 0, 800)
     dphi_ax = Bin("dphi", r"$\Delta\phi$", 50, 0, 3.5)
 
+    prescale_weight_ax = Bin("weight_value", "Trigger Prescale Weight",100,0,int(1e6))
+
     items = {}
     
     items['sumw'] = processor.defaultdict_accumulator(float)
@@ -64,6 +66,8 @@ def get_accumulator(regions):
     items["mjj"] = Hist("Counts", dataset_ax, region_ax, mjj_ax)
     items["ht"] = Hist("Counts", dataset_ax, region_ax, ht_ax)
     items["htmiss"] = Hist("Counts", dataset_ax, region_ax, mht_ax)
+
+    items['prescale_weight'] = Hist("Counts", dataset_ax, region_ax, prescale_weight_ax)
 
     for region in regions:
         if region == "inclusive":
@@ -276,6 +280,10 @@ class CoffeaSmearer(processor.ProcessorABC):
             ezfill('ht',       ht=ht[mask],          weight=weight[mask] )
             ezfill('htmiss',   ht=htmiss[mask],      weight=weight[mask] )
             ezfill('dphijm',   dphi=dphijm[mask],    weight=weight[mask] )
+
+            # Calculte trigger PS weight and fill histogram
+            trigger_ps_weight = weight[mask] * self.ntoys
+            ezfill('prescale_weight',   weight_value=weight[mask])
 
         return output
 
