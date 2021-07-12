@@ -69,6 +69,8 @@ def get_accumulator(regions):
 
     items['prescale_weight'] = Hist("Counts", dataset_ax, region_ax, prescale_weight_ax)
 
+    items['high_ps_events'] = processor.defaultdict_accumulator(list)
+
     for region in regions:
         if region == "inclusive":
             continue
@@ -249,6 +251,9 @@ class CoffeaSmearer(processor.ProcessorABC):
             output['sumw'][dataset] +=  df['sumw']
             output['sumw2'][dataset] +=  df['sumw2']
         
+        # Calculte trigger prescale weight
+        trigger_ps_weight = weight * self.ntoys
+
         for region, cuts in self.regions.items():
 
             # Fill cutflow
@@ -258,6 +263,23 @@ class CoffeaSmearer(processor.ProcessorABC):
                     output['cutflow_' + region][dataset][cutname] += selection.all(*cuts[:icut+1]).sum()
             
             mask = selection.all(*cuts)
+
+            # Save per-event values when the weight is large (in signal region)
+            if region == 'sr_vbf':
+                psmask = trigger_ps_weight[mask] > 1e5
+                
+                output['high_ps_events']['ht'] = [ht[mask][psmask]]
+                output['high_ps_events']['htmiss'] = [htmiss[mask][psmask]]
+                output['high_ps_events']['met_phi'] = [met_phi[mask][psmask]]
+                output['high_ps_events']['mjj'] = [mjj[mask][psmask]]
+                output['high_ps_events']['dphijm'] = [dphijm[mask][psmask]]
+                
+                output['high_ps_events']['ak4_pt0'] = [diak4.i0.pt[mask][psmask]]
+                output['high_ps_events']['ak4_eta0'] = [diak4.i0.eta[mask][psmask]]
+                output['high_ps_events']['ak4_pt1'] = [diak4.i1.pt[mask][psmask]]
+                output['high_ps_events']['ak4_eta1'] = [diak4.i1.eta[mask][psmask]]
+                
+                output['high_ps_events']['ps_weight'] = [trigger_ps_weight[mask][psmask]]
 
             def ezfill(name, **kwargs):
                 """Helper function to make filling easier."""
@@ -281,8 +303,6 @@ class CoffeaSmearer(processor.ProcessorABC):
             ezfill('htmiss',   ht=htmiss[mask],      weight=weight[mask] )
             ezfill('dphijm',   dphi=dphijm[mask],    weight=weight[mask] )
 
-            # Calculte trigger PS weight and fill histogram
-            trigger_ps_weight = weight[mask] * self.ntoys
             ezfill('prescale_weight',   weight_value=weight[mask])
 
         return output
