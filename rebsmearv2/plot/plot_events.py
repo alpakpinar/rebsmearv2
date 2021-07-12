@@ -38,7 +38,7 @@ def parse_cli():
     args = parser.parse_args()
     return args
 
-def make_plot(acc, distribution, outdir='./output', region='sr_vbf', dataset='QCD_HT', years=[2017,2018]):
+def make_plot(acc, distribution, outdir='./output', region='sr_vbf', dataset='QCD_HT', years=[2017,2018], outrootfile=None):
     acc.load(distribution)
     h = acc[distribution]
 
@@ -53,10 +53,6 @@ def make_plot(acc, distribution, outdir='./output', region='sr_vbf', dataset='QC
         pass
 
     h = h.integrate('region', region)
-
-    # Save the mjj shape to an output ROOT file
-    if distribution == 'mjj' and region == 'sr_vbf':
-        outrootfile = uproot.recreate(pjoin(outdir, 'rebsmear_qcd_estimate.root'))
 
     for year in years:
         fig, ax = plt.subplots()
@@ -101,6 +97,11 @@ def make_plot(acc, distribution, outdir='./output', region='sr_vbf', dataset='QC
             sumw = np.r_[0, sumw, 0]
             sumw2 = np.r_[0, sumw2*Ntoys, 0]
             outrootfile[f'rebsmear_qcd_{year}'] = URTH1(edges=xedges, sumw=sumw, sumw2=sumw2)
+        elif distribution == 'mjj' and region == 'cr_vbf_qcd':
+            # Underflow + overflow bins = 0
+            sumw = np.r_[0, sumw, 0]
+            sumw2 = np.r_[0, sumw2*Ntoys, 0]
+            outrootfile[f'rebsmear_qcd_{year}_CR'] = URTH1(edges=xedges, sumw=sumw, sumw2=sumw2)
 
         outpath = pjoin(outdir, f'{dataset}_{year}_{region}_{distribution}.pdf')
         fig.savefig(outpath)
@@ -133,6 +134,8 @@ def main():
         'cr_vbf_qcd'
     ]
     
+    outrootfile = uproot.recreate(pjoin(outdir, 'rebsmear_qcd_estimate.root'))
+
     for region in regions:
         if not re.match(args.region, region):
             continue
@@ -145,7 +148,8 @@ def main():
                 distribution=distribution,
                 region=region,
                 dataset='JetHT',
-                years=args.years
+                years=args.years,
+                outrootfile=outrootfile
             )
 
 if __name__ == '__main__':

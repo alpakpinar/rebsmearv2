@@ -4,8 +4,9 @@ import os
 import sys
 import re
 import argparse
-from typing import BinaryIO
+import uproot
 import numpy as np
+import mplhep as hep
 
 from matplotlib import pyplot as plt
 from coffea import hist
@@ -48,7 +49,7 @@ def parse_cli():
     args = parser.parse_args()
     return args
 
-def extract_yields_in_cr(acc, distribution, region='cr_vbf_qcd_rs', year=2017):
+def stack_plot_qcd_cr(acc, distribution, region='cr_vbf_qcd_rs', year=2017, rs_filepath=None):
     '''Calculate the data - (nonQCD MC) in the QCD CR.'''
     acc.load(distribution)
     h = acc[distribution]
@@ -74,6 +75,7 @@ def extract_yields_in_cr(acc, distribution, region='cr_vbf_qcd_rs', year=2017):
         'elinewidth': 1,
     }
     
+    # Observed data in QCD CR
     hist.plot1d(h[data], 
         ax=ax, 
         overlay='dataset', 
@@ -81,13 +83,34 @@ def extract_yields_in_cr(acc, distribution, region='cr_vbf_qcd_rs', year=2017):
         error_opts=data_err_opts
     )
     
-    hist.plot1d(h[mc], 
-        ax=ax, 
-        overlay='dataset', 
-        binwnorm=1, 
-        stack=True,
-        clear=False
-    )
+    # Non QCD MC in QCD CR
+    datasets = list(map(str, h[mc].identifiers('dataset')))
+    plot_info = {
+        'label' : datasets,
+        'sumw' : [],
+    }
+
+
+    for dataset in datasets:
+        sumw = h.integrate('dataset', dataset).values()[()]
+        plot_info['sumw'].append(sumw)
+
+    # Include the R&S QCD estimate in the stack plot
+    if rs_filepath:
+        h_rs = uproot.open(rs_filepath)[f'rebsmear_qcd_{year}_CR']
+        plot_info['label'].append('R&S QCD Estimate')
+        plot_info['sumw'].append(h_rs.values)
+
+    xedges = h.integrate('dataset').axes()[0].edges()
+    xcenters = h.integrate('dataset').axes()[0].centers()
+
+    hep.histplot(plot_info['sumw'], xedges, 
+        ax=ax,
+        label=plot_info['label'], 
+        histtype='fill',
+        binwnorm=1,
+        stack=True
+        )
 
     ax.set_yscale('log')
     ax.set_ylim(1e-4,1e6)
@@ -95,6 +118,13 @@ def extract_yields_in_cr(acc, distribution, region='cr_vbf_qcd_rs', year=2017):
 
     ax.yaxis.set_ticks_position('both')
 
+    ax.text(0,1,year,
+        fontsize=14,
+        ha='left',
+        va='bottom',
+        transform=ax.transAxes
+    )
+    
     handles, labels = ax.get_legend_handles_labels()
     for handle, label in zip(handles, labels):
         for regex, new_label in PRETTY_LEGEND_LABELS.items():
@@ -103,22 +133,37 @@ def extract_yields_in_cr(acc, distribution, region='cr_vbf_qcd_rs', year=2017):
 
     ax.legend(title='VBF QCD CR', handles=handles, ncol=2)
 
-    # Calculate data - MC
-    h_data = h[data].integrate('dataset')
-    h_mc = h[mc].integrate('dataset')
-    h_mc.scale(-1)
-    h_data.add(h_mc)
+    # Calculate data / (non-QCD MC + R&S QCD estimate)
+    sumw_data, sumw2_data = h[data].integrate('dataset').values(sumw2=True)[()]
+    sumw_mc, sumw2_mc = h[mc].integrate('dataset').values(sumw2=True)[()]
+    
+    if rs_filepath:
+        sumw_mc += h_rs.values
+        sumw2_mc += h_rs.variances
 
-    # Plot data - MC on the bottom pad
-    hist.plot1d(h_data, ax=rax, binwnorm=1)
+    r = sumw_data / sumw_mc
 
-    rax.set_ylabel('(Data - MC) / GeV')
-    rax.set_ylim(1e-3,1e1)
-    rax.set_yscale('log')
+    rerr = np.abs(
+        hist.poisson_interval(r, sumw2_data / sumw_mc**2) - r
+    ) 
 
-    rax.get_legend().remove()
+    rax.errorbar(xcenters, r, yerr=rerr, marker='o', ls='', color='k')
+    rax.grid(True)
+    rax.set_ylabel('Data / Prediction')
+    rax.set_ylim(0,2)
 
     rax.yaxis.set_ticks_position('both')
+
+    unity = np.ones_like(sumw_mc)
+    denom_unc = hist.poisson_interval(unity, sumw2_mc / sumw_mc ** 2)
+    opts = {"step": "post", "facecolor": (0, 0, 0, 0.3), "linewidth": 0}
+    
+    rax.fill_between(
+        xedges,
+        np.r_[denom_unc[0], denom_unc[0, -1]],
+        np.r_[denom_unc[1], denom_unc[1, -1]],
+        **opts
+    )
 
     outdir = './output/qcd_cr'
     try:
@@ -131,47 +176,17 @@ def extract_yields_in_cr(acc, distribution, region='cr_vbf_qcd_rs', year=2017):
 
     print(f'File saved: {outpath}')
 
-    # Return the QCD yield
-    return h_data
-
-def plot_rebsmear_prediction(acc_rs, h_qcd, distribution='mjj', dataset='JetHT_2017', region='cr_vbf_qcd'):
-    '''Together with the data - MC prediction from VBF, plot the rebalance and smear prediction.'''
-    acc_rs.load(distribution)
-    h = acc_rs[distribution]
-
-    # Merge the JetHT datasets together
-    h = rs_merge_datasets(h)
-
-    if distribution in BINNINGS.keys():
-        new_ax = BINNINGS[distribution]
-        h = h.rebin(new_ax.name, new_ax)
-
-    h = h.integrate('region', region)[dataset]
-
-    fig, ax = plt.subplots()
-    hist.plot1d(h, ax=ax, overlay='dataset', binwnorm=1)
-    hist.plot1d(h_qcd, ax=ax, binwnorm=1, clear=False)
-
-    ax.set_yscale('log')
-    ax.set_ylim(1e-4,1e2)
-
-    fig.savefig('test.pdf')
-
 def main():
-    inpath_vbf = rebsmear_path('submission/vbfhinv/merged_2021-06-11_vbfhinv_ULv8_05Feb21_rebsmear_CR')
-    inpath_rs = rebsmear_path('submission/merged_2021-06-11_rebsmear_privatePS')
+    inpath_vbf = rebsmear_path('submission/vbfhinv/merged_2021-07-12_vbfhinv_ULv8_05Feb21_rebsmearCR')
+
+    rs_filepath = rebsmear_path('plot/output/merged_2021-07-05_rebsmear_v2_run_PFJet40_suppress/rebsmear_qcd_estimate.root')
 
     acc_vbf = dir_archive(inpath_vbf)
     acc_vbf.load('sumw')
     acc_vbf.load('sumw_pileup')
     acc_vbf.load('nevents')
 
-    h_qcd = extract_yields_in_cr(acc_vbf, distribution='mjj')
-
-    # Rebalance and smear output
-    acc_rs = dir_archive(inpath_rs)
-
-    plot_rebsmear_prediction(acc_rs, h_qcd)
+    stack_plot_qcd_cr(acc_vbf, distribution='mjj', rs_filepath=rs_filepath)
 
 if __name__ == '__main__':
     main()
