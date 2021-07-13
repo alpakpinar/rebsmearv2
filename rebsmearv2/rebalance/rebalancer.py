@@ -51,7 +51,7 @@ def compute_prescale_weight(trigger_to_look, run, luminosityBlock):
     assert(len(w) == 1)
     return w.iloc[0], int(re.findall('\d+', trigger_to_look)[0])
 
-def determine_second_lowest_prescale(trigger_results, run, luminosityBlock):
+def determine_second_lowest_prescale(trigger_results, trigger_thresh_for_ps_weight, run, luminosityBlock):
     '''
     If the event is passing multiple triggers, determine the second lowest prescale weight.
     If the event is only passing a single trigger, return -1.
@@ -60,11 +60,14 @@ def determine_second_lowest_prescale(trigger_results, run, luminosityBlock):
     for t,v in trigger_results.items():
         if v != 1:
             continue
+        thresh = int(re.findall('\d+', t)[0])
+        if thresh == trigger_thresh_for_ps_weight:
+            continue
         pslist.append(
             compute_prescale_weight(t, run, luminosityBlock)[0]
         )
     
-    if len(pslist) == 1:
+    if len(pslist) == 0:
         return -1
         
     return min(pslist)
@@ -506,25 +509,22 @@ class RebalanceExecutor():
 
             # Try reading the prescale weight based on run and lumi.
             # If we don't find a corresponding record, we move on.
-            try:
-                # Here's how we'll determine the prescale weights:
-                # For each event, determine the trigger with the highest threshold for which it is passing
-                # Read the PS values as a function of (run,lumi) for that trigger
-                trigger_to_look = decide_trigger_for_prescale(trigger_results)
-                ps_weight, trigger_thresh_for_ps_weight = compute_prescale_weight(trigger_to_look, run[0], luminosityBlock[0])
-                
-                weight_trigger_prescale[0] = ps_weight
-                trigger_thresh_for_ps[0] = trigger_thresh_for_ps_weight
 
-                # Look for the second smallest prescale weight for events passing multiple triggers.
-                second_lowest_ps = determine_second_lowest_prescale(trigger_results, run[0], luminosityBlock[0])
-                if second_lowest_ps == -1:
-                    first_to_second_prescale_ratio[0] = -1
-                else:
-                    first_to_second_prescale_ratio[0] = ps_weight / second_lowest_ps
-            except:
-                print(f'INFO: Could not find prescale records for event: {event}, skipping.')
-                continue
+            # Here's how we'll determine the prescale weights:
+            # For each event, determine the trigger with the highest threshold for which it is passing
+            # Read the PS values as a function of (run,lumi) for that trigger
+            trigger_to_look = decide_trigger_for_prescale(trigger_results)
+            ps_weight, trigger_thresh_for_ps_weight = compute_prescale_weight(trigger_to_look, run[0], luminosityBlock[0])
+            
+            weight_trigger_prescale[0] = ps_weight
+            trigger_thresh_for_ps[0] = trigger_thresh_for_ps_weight
+
+            # Look for the second smallest prescale weight for events passing multiple triggers.
+            second_lowest_ps = determine_second_lowest_prescale(trigger_results, trigger_thresh_for_ps_weight, run[0], luminosityBlock[0])
+            if second_lowest_ps == -1:
+                first_to_second_prescale_ratio[0] = -1
+            else:
+                first_to_second_prescale_ratio[0] = ps_weight / second_lowest_ps
     
             # Store the prescale weight for later use
             # If no prescaling was done, weight would be just 1.
