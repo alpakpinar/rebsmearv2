@@ -5,7 +5,6 @@ import sys
 import re
 import numpy as np
 
-from coffea import hist
 from matplotlib import pyplot as plt
 from klepto.archives import dir_archive
 from pprint import pprint
@@ -22,6 +21,16 @@ npy_binnings = {
     'htmiss' : np.arange(0,400,20),
 }
 
+xlabels = {
+    'mjj' : r'$M_{jj} \ (GeV)$',
+    'ak4_pt0' : r'Leading Jet $p_T \ (GeV)$',
+    'ak4_pt1' : r'Trailing Jet $p_T \ (GeV)$',
+    'ak4_eta0' : r'Leading Jet $\eta$',
+    'ak4_eta1' : r'Trailing Jet $\eta$',
+    'ht' : r'$H_T \ (GeV)$',
+    'htmiss' : r'$H_T^{miss} \ (GeV)$',
+}
+
 def plot_events_with_high_psweight(acc, outtag, distribution='mjj'):
     '''Plot distributions of the events with large prescale weights.'''
     treename = 'high_ps_events'
@@ -31,7 +40,10 @@ def plot_events_with_high_psweight(acc, outtag, distribution='mjj'):
     vals = t[distribution].value
     fig, ax = plt.subplots()
     
-    ax.hist(vals, bins=npy_binnings[distribution])
+    ax.hist(vals, bins=npy_binnings[distribution], histtype='step')
+    ax.set_xlabel(xlabels[distribution])
+    ax.set_ylabel('Counts')
+    
     outdir = f'./output/{outtag}/high_ps_weights'
     if not os.path.exists(outdir):
         os.makedirs(outdir)
