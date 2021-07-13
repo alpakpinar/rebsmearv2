@@ -22,11 +22,12 @@ from pprint import pprint
 
 pjoin = os.path.join
 
-def decide_trigger_for_prescale(trigger_results):
+def decide_trigger_for_prescale(trigger_results, jets, pt_multiplier=1.5):
     '''Given the trigger results for the event, determine the trigger with the highest threshold (lowest prescale).'''
     def decide_trigger_order(trigger):
         return int(re.findall('\d+', trigger)[0])
 
+    maxjetpt = max([j.pt for j in jets])
 
     # Sort the triggers according to the pt thresholds (in descending order)
     sorted_triggers = sorted(trigger_results.keys(), key=decide_trigger_order, reverse=True)
@@ -35,7 +36,8 @@ def decide_trigger_for_prescale(trigger_results):
     trigger_to_look = None
 
     for t in sorted_triggers:
-        if trigger_results[t] == 1:
+        pt_thresh = pt_multiplier * int(re.findall('\d+', t)[0])
+        if trigger_results[t] == 1 and maxjetpt > pt_thresh:
             trigger_to_look = t
             break
     
@@ -68,6 +70,23 @@ def determine_second_lowest_prescale(trigger_results, run, luminosityBlock):
         return -1
         
     return min(pslist)
+
+def trigger_preselection(trigger_results, jets, pt_multiplier=1.5):
+    '''
+    Function containing logic for the trigger pre-selection.
+    Event should at least pass one trigger, also with leading jet pt > multiplier * trigger threshold
+    '''
+    maxjetpt = max([j.pt for j in jets])
+    for t,v in trigger_results.items():
+        if v != 1:
+            continue
+        thresh = int(re.findall('\d+', t)[0])
+        if maxjetpt > thresh * pt_multiplier:
+            return True
+        else:
+            continue
+
+    return False
 
 class RebalanceExecutor():
     '''
@@ -371,6 +390,8 @@ class RebalanceExecutor():
         ]
 
         njet = array('i', [0])
+        
+        init_jet_pt = array('f',  [0.] * nJetMax)
         jet_pt = array('f',  [0.] * nJetMax)
         jet_eta = array('f', [0.] * nJetMax)
         jet_phi = array('f', [0.] * nJetMax)
@@ -392,6 +413,7 @@ class RebalanceExecutor():
         outtree.Branch('event', eventnum, 'event/I')
         
         outtree.Branch('nJet', njet, 'nJet/I')
+        outtree.Branch('Jet_initial_pt', init_jet_pt, 'Jet_initial_pt[nJet]/F')
         outtree.Branch('Jet_pt', jet_pt, 'Jet_pt[nJet]/F')
         outtree.Branch('Jet_eta', jet_eta, 'Jet_eta[nJet]/F')
         outtree.Branch('Jet_phi', jet_phi, 'Jet_phi[nJet]/F')
@@ -416,7 +438,7 @@ class RebalanceExecutor():
         print(f'Time: {time_init}')
         for event in range(numevents):
             # In test mode, only run on first 1000 events
-            if self.test and event == 100:
+            if self.test and event == 1000:
                 break
             
             if event % 1e4 == 0:
@@ -426,10 +448,6 @@ class RebalanceExecutor():
             # Trigger selection
 
             trigger_results = self._trigger_results(tree, event, triggers=triggers)
-            # At least should pass one trigger
-            if not any(list(trigger_results.values())):
-                continue
-
             for t, v in trigger_results.items():
                 trig_arrays[t][0] = v
 
@@ -437,13 +455,14 @@ class RebalanceExecutor():
             if self._event_contains_lepton(event, tree):
                 continue
 
-
             jets = self._read_jets(event, tree)
-
             # Require a minimum of two jets (VBF phase space)
             if len(jets) < 2:
                 continue
-            
+            # At least should pass one trigger (with high enough jet pt!)
+            if not trigger_preselection(trigger_results, jets, pt_multiplier=1.5):
+                continue
+
             # Kinematic pre-selection based on jets
             if not self._kinematic_preselection(jets):
                 continue
@@ -492,6 +511,7 @@ class RebalanceExecutor():
             numjets = int(ws.var('njets').getValV())
             njet[0] = numjets
             for idx in range(numjets):
+                init_jet_pt[idx] = ws.var('reco_pt_{}'.format(idx)).getValV()
                 jet_pt[idx] = ws.var('gen_pt_{}'.format(idx)).getValV()
                 jet_eta[idx] = ws.var('reco_eta_{}'.format(idx)).getValV()
                 jet_phi[idx] = ws.var('reco_phi_{}'.format(idx)).getValV()
@@ -506,25 +526,22 @@ class RebalanceExecutor():
 
             # Try reading the prescale weight based on run and lumi.
             # If we don't find a corresponding record, we move on.
-            try:
-                # Here's how we'll determine the prescale weights:
-                # For each event, determine the trigger with the highest threshold for which it is passing
-                # Read the PS values as a function of (run,lumi) for that trigger
-                trigger_to_look = decide_trigger_for_prescale(trigger_results)
-                ps_weight, trigger_thresh_for_ps_weight = compute_prescale_weight(trigger_to_look, run[0], luminosityBlock[0])
-                
-                weight_trigger_prescale[0] = ps_weight
-                trigger_thresh_for_ps[0] = trigger_thresh_for_ps_weight
 
-                # Look for the second smallest prescale weight for events passing multiple triggers.
-                second_lowest_ps = determine_second_lowest_prescale(trigger_results, run[0], luminosityBlock[0])
-                if second_lowest_ps == -1:
-                    first_to_second_prescale_ratio[0] = -1
-                else:
-                    first_to_second_prescale_ratio[0] = ps_weight / second_lowest_ps
-            except:
-                print(f'INFO: Could not find prescale records for event: {event}, skipping.')
-                continue
+            # Here's how we'll determine the prescale weights:
+            # For each event, determine the trigger with the highest threshold for which it is passing
+            # Read the PS values as a function of (run,lumi) for that trigger
+            trigger_to_look = decide_trigger_for_prescale(trigger_results, jets, pt_multiplier=1.5)
+            ps_weight, trigger_thresh_for_ps_weight = compute_prescale_weight(trigger_to_look, run[0], luminosityBlock[0])
+            
+            weight_trigger_prescale[0] = ps_weight
+            trigger_thresh_for_ps[0] = trigger_thresh_for_ps_weight
+
+            # Look for the second smallest prescale weight for events passing multiple triggers.
+            second_lowest_ps = determine_second_lowest_prescale(trigger_results, run[0], luminosityBlock[0])
+            if second_lowest_ps == -1:
+                first_to_second_prescale_ratio[0] = -1
+            else:
+                first_to_second_prescale_ratio[0] = ps_weight / second_lowest_ps
     
             # Store the prescale weight for later use
             # If no prescaling was done, weight would be just 1.
