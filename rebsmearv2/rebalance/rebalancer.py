@@ -384,7 +384,7 @@ class RebalanceExecutor():
         weight = array('f', [0.])
         # Weight for trigger prescaling
         weight_trigger_prescale = array('f', [0.])
-        first_to_second_prescale_ratio = array('f', [0.])
+        second_to_first_prescale_ratio = array('f', [0.])
     
         # Store the trigger that is used for prescale weight calculation
         trigger_thresh_for_ps = array('i', [0])
@@ -403,7 +403,7 @@ class RebalanceExecutor():
         outtree.Branch('HT', ht, 'HT/F')
         outtree.Branch('weight', weight, 'weight/F')
         outtree.Branch('weight_trigger_prescale', weight_trigger_prescale, 'weight_trigger_prescale/F')
-        outtree.Branch('first_to_second_prescale_ratio', first_to_second_prescale_ratio, 'first_to_second_prescale_ratio/F')
+        outtree.Branch('second_to_first_prescale_ratio', second_to_first_prescale_ratio, 'second_to_first_prescale_ratio/F')
         outtree.Branch('trigger_thresh_for_ps', trigger_thresh_for_ps, 'trigger_thresh_for_ps/I')
 
         # Initialize trigger branches (P/F)
@@ -522,9 +522,9 @@ class RebalanceExecutor():
             # Look for the second smallest prescale weight for events passing multiple triggers.
             second_lowest_ps = determine_second_lowest_prescale(trigger_results, trigger_thresh_for_ps_weight, run[0], luminosityBlock[0])
             if second_lowest_ps == -1:
-                first_to_second_prescale_ratio[0] = -1
+                second_to_first_prescale_ratio[0] = -1
             else:
-                first_to_second_prescale_ratio[0] = ps_weight / second_lowest_ps
+                second_to_first_prescale_ratio[0] = second_lowest_ps / ps_weight
     
             # Store the prescale weight for later use
             # If no prescaling was done, weight would be just 1.
