@@ -507,9 +507,6 @@ class RebalanceExecutor():
             luminosityBlock[0] = tree['luminosityBlock'].array(entrystart=event, entrystop=event+1)[0]
             eventnum[0] = tree['event'].array(entrystart=event, entrystop=event+1)[0]
 
-            # Try reading the prescale weight based on run and lumi.
-            # If we don't find a corresponding record, we move on.
-
             # Here's how we'll determine the prescale weights:
             # For each event, determine the trigger with the highest threshold for which it is passing
             # Read the PS values as a function of (run,lumi) for that trigger
