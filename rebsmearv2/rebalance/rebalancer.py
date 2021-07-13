@@ -48,7 +48,6 @@ def compute_prescale_weight(trigger_to_look, run, luminosityBlock):
     '''Given the event and list of trigger results, determine the trigger an event passes with the highest threshold.'''
     df_ps = dataframe_for_trigger_prescale(trigger_to_look)
     w = df_ps.loc[(df_ps['Run'] == run) & (df_ps['LumiSection'] == luminosityBlock)]['Prescale']
-    assert(len(w) == 1)
     return w.iloc[0], int(re.findall('\d+', trigger_to_look)[0])
 
 def determine_second_lowest_prescale(trigger_results, trigger_thresh_for_ps_weight, run, luminosityBlock):
