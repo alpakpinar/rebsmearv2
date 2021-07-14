@@ -16,6 +16,10 @@ class Jet():
     sieie: float
     sipip: float
     hfcss: float
+    nef: float
+    nhf: float
+    cef: float
+    chf: float
     px: float = 0
     py: float = 0
     pz: float = 0

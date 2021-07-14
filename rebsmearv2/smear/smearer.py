@@ -45,6 +45,10 @@ def get_accumulator(regions):
     jet_pt_ax = Bin("jetpt", r"$p_{T}$ (GeV)", 100, 0, 1000)
     jet_eta_ax = Bin("jeteta", r"$\eta$", 50, -5, 5)
     jet_phi_ax = Bin("jetphi", r"$\phi$", 50, -np.pi, np.pi)
+    frac_ax = Bin("frac", r"Jet Energy Fraction", 50, 0, 1)
+
+    sieie_ax = Bin("sieie", r"$\sigma_{\eta\eta}$", 50, 0, 0.5)
+    sipip_ax = Bin("sipip", r"$\sigma_{\phi\phi}$", 50, 0, 0.5)
 
     ht_ax = Bin("ht", r"$H_{T}$ (GeV)", 100, 0, 4000)
     mht_ax = Bin("ht", r"$H_{T}$ (GeV)", 80, 0, 800)
@@ -58,10 +62,18 @@ def get_accumulator(regions):
     items["ak4_pt0"] = Hist("Counts", dataset_ax, region_ax, jet_pt_ax)
     items["ak4_eta0"] = Hist("Counts", dataset_ax, region_ax, jet_eta_ax)
     items["ak4_phi0"] = Hist("Counts", dataset_ax, region_ax, jet_phi_ax)
+    items["ak4_nef0"] = Hist("Counts", dataset_ax, region_ax, frac_ax)
+    items["ak4_nhf0"] = Hist("Counts", dataset_ax, region_ax, frac_ax)
+    items["ak4_cef0"] = Hist("Counts", dataset_ax, region_ax, frac_ax)
+    items["ak4_chf0"] = Hist("Counts", dataset_ax, region_ax, frac_ax)
 
     items["ak4_pt1"] = Hist("Counts", dataset_ax, region_ax, jet_pt_ax)
     items["ak4_eta1"] = Hist("Counts", dataset_ax, region_ax, jet_eta_ax)
     items["ak4_phi1"] = Hist("Counts", dataset_ax, region_ax, jet_phi_ax)
+    items["ak4_nef1"] = Hist("Counts", dataset_ax, region_ax, frac_ax)
+    items["ak4_nhf1"] = Hist("Counts", dataset_ax, region_ax, frac_ax)
+    items["ak4_cef1"] = Hist("Counts", dataset_ax, region_ax, frac_ax)
+    items["ak4_chf1"] = Hist("Counts", dataset_ax, region_ax, frac_ax)
 
     items["dphijm"] = Hist("Counts", dataset_ax, region_ax, dphi_ax)
     items["mjj"] = Hist("Counts", dataset_ax, region_ax, mjj_ax)
@@ -120,7 +132,11 @@ class CoffeaSmearer(processor.ProcessorABC):
             pt=df['Jet_pt'],
             eta=df['Jet_eta'],
             phi=df['Jet_phi'],
-            mass=0. * df['Jet_pt']
+            mass=0. * df['Jet_pt'],
+            nef=df['Jet_neEmEF'],
+            cef=df['Jet_chEmEF'],
+            nhf=df['Jet_neHEF'],
+            chf=df['Jet_chHEF'],
         )
 
         return ak4
@@ -175,6 +191,20 @@ class CoffeaSmearer(processor.ProcessorABC):
             [ak4.phi for k in range(self.ntoys)]
         )
 
+        # Propagate the energy fractions
+        jet_nef = np.concatenate(
+            [ak4.nef for k in range(self.ntoys)]
+        )
+        jet_nhf = np.concatenate(
+            [ak4.nhf for k in range(self.ntoys)]
+        )
+        jet_cef = np.concatenate(
+            [ak4.cef for k in range(self.ntoys)]
+        )
+        jet_chf = np.concatenate(
+            [ak4.chf for k in range(self.ntoys)]
+        )
+
         jagged_jet_pt = JaggedArray.fromiter(smeared_pt)
         njets = jagged_jet_pt.counts
         
@@ -182,13 +212,22 @@ class CoffeaSmearer(processor.ProcessorABC):
         jeteta = JaggedArray.fromiter(jeteta).flatten()
         jetphi = JaggedArray.fromiter(jetphi).flatten()
         
+        jetnef = JaggedArray.fromiter(jet_nef).flatten()
+        jetnhf = JaggedArray.fromiter(jet_nhf).flatten()
+        jetcef = JaggedArray.fromiter(jet_cef).flatten()
+        jetchf = JaggedArray.fromiter(jet_chf).flatten()
+        
         # Here we go, construct the new jet objects with these new jagged arrays!
         newak4 = JaggedCandidateArray.candidatesfromcounts(
             njets,
             pt=jetpt,
             eta=jeteta,
             phi=jetphi,
-            mass=jetpt * 0.
+            mass=jetpt * 0,
+            nef=jetnef,
+            nhf=jetnhf,
+            cef=jetcef,
+            chf=jetchf,
         )
 
         # Also return a modified event weight array
@@ -292,10 +331,18 @@ class CoffeaSmearer(processor.ProcessorABC):
             ezfill('ak4_pt0',     jetpt=diak4.i0.pt[mask].flatten(),      weight=weight[mask])
             ezfill('ak4_eta0',    jeteta=diak4.i0.eta[mask].flatten(),    weight=weight[mask])
             ezfill('ak4_phi0',    jetphi=diak4.i0.phi[mask].flatten(),    weight=weight[mask])
+            ezfill('ak4_nef0',    frac=diak4.i0.nef[mask].flatten(),      weight=weight[mask])
+            ezfill('ak4_nhf0',    frac=diak4.i0.nhf[mask].flatten(),      weight=weight[mask])
+            ezfill('ak4_cef0',    frac=diak4.i0.cef[mask].flatten(),      weight=weight[mask])
+            ezfill('ak4_chf0',    frac=diak4.i0.chf[mask].flatten(),      weight=weight[mask])
 
             ezfill('ak4_pt1',     jetpt=diak4.i1.pt[mask].flatten(),      weight=weight[mask])
             ezfill('ak4_eta1',    jeteta=diak4.i1.eta[mask].flatten(),    weight=weight[mask])
             ezfill('ak4_phi1',    jetphi=diak4.i1.phi[mask].flatten(),    weight=weight[mask])
+            ezfill('ak4_nef1',    frac=diak4.i1.nef[mask].flatten(),      weight=weight[mask])
+            ezfill('ak4_nhf1',    frac=diak4.i1.nhf[mask].flatten(),      weight=weight[mask])
+            ezfill('ak4_cef1',    frac=diak4.i1.cef[mask].flatten(),      weight=weight[mask])
+            ezfill('ak4_chf1',    frac=diak4.i1.chf[mask].flatten(),      weight=weight[mask])
 
             ezfill('mjj',      mjj=mjj[mask],        weight=weight[mask] )
             ezfill('ht',       ht=ht[mask],          weight=weight[mask] )

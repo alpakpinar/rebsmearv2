@@ -156,7 +156,11 @@ class RebalanceExecutor():
         
         jetid = tree['Jet_jetId'].array(entrystart=n, entrystop=n+1)[0]
 
+        # HF shower shape variables
         sieie, sipip, hfcss = (tree[f'Jet_{x}'].array(entrystart=n, entrystop=n+1)[0] for x in ['hfsigmaEtaEta', 'hfsigmaPhiPhi', 'hfcentralEtaStripSize'])
+
+        # Jet energy fractions
+        nef, nhf, cef, chf = (tree[f'Jet_{x}'].array(entrystart=n, entrystop=n+1)[0] for x in ['neEmEF', 'neHEF', 'chEmEF', 'chHEF'])
 
         jets = []
         for idx in range(len(pt)):
@@ -173,6 +177,10 @@ class RebalanceExecutor():
                 sieie=sieie[idx],
                 sipip=sipip[idx],
                 hfcss=hfcss[idx],
+                nef=nef[idx],
+                nhf=nhf[idx],
+                cef=cef[idx],
+                chf=chf[idx],
             )
             if not self._jet_preselection(j):
                 continue
@@ -377,6 +385,15 @@ class RebalanceExecutor():
         jet_eta = array('f', [0.] * nJetMax)
         jet_phi = array('f', [0.] * nJetMax)
         
+        jet_sieie = array('f',  [0.] * nJetMax)
+        jet_sipip = array('f',  [0.] * nJetMax)
+        jet_hfcss = array('f',  [0.] * nJetMax)
+
+        jet_nef = array('f',  [0.] * nJetMax)
+        jet_nhf = array('f',  [0.] * nJetMax)
+        jet_cef = array('f',  [0.] * nJetMax)
+        jet_chf = array('f',  [0.] * nJetMax)
+
         htmiss = array('f', [0.])
         ht = array('f', [0.])
         # Weight for HT based prescaling
@@ -398,6 +415,15 @@ class RebalanceExecutor():
         outtree.Branch('Jet_eta', jet_eta, 'Jet_eta[nJet]/F')
         outtree.Branch('Jet_phi', jet_phi, 'Jet_phi[nJet]/F')
     
+        outtree.Branch('Jet_hfsigmaEtaEta', jet_sieie, 'Jet_hfsigmaEtaEta[nJet]/F')
+        outtree.Branch('Jet_hfsigmaPhiPhi', jet_sipip, 'Jet_hfsigmaPhiPhi[nJet]/F')
+        outtree.Branch('Jet_hfcentralEtaStripSize', jet_hfcss, 'Jet_hfcentralEtaStripSize[nJet]/F')
+        
+        outtree.Branch('Jet_neEmEF', jet_nef, 'Jet_neEmEF[nJet]/F')
+        outtree.Branch('Jet_chEmEF', jet_cef, 'Jet_chEmEF[nJet]/F')
+        outtree.Branch('Jet_neHEF', jet_nhf, 'Jet_neHEF[nJet]/F')
+        outtree.Branch('Jet_chHEF', jet_chf, 'Jet_chHEF[nJet]/F')
+
         outtree.Branch('HTmiss', htmiss, 'HTmiss/F')
         outtree.Branch('HT', ht, 'HT/F')
         outtree.Branch('weight', weight, 'weight/F')
@@ -497,6 +523,16 @@ class RebalanceExecutor():
                 jet_pt[idx] = ws.var('gen_pt_{}'.format(idx)).getValV()
                 jet_eta[idx] = ws.var('reco_eta_{}'.format(idx)).getValV()
                 jet_phi[idx] = ws.var('reco_phi_{}'.format(idx)).getValV()
+
+                # Fill in more kinematic variables
+                jet_sieie[idx] = jets[idx].sieie
+                jet_sipip[idx] = jets[idx].sipip
+                jet_hfcss[idx] = jets[idx].hfcss
+
+                jet_nef[idx] = jets[idx].nef
+                jet_nhf[idx] = jets[idx].nhf
+                jet_cef[idx] = jets[idx].cef
+                jet_chf[idx] = jets[idx].chf
     
             htmiss[0] = ws.function('gen_htmiss_pt').getValV()
             ht[0] = ws.function('gen_ht').getValV()
