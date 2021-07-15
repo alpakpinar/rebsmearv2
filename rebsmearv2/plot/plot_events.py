@@ -17,16 +17,26 @@ from pprint import pprint
 
 pjoin = os.path.join
 
+Bin = hist.Bin
+
 BINNINGS = {
-    'mjj' : hist.Bin('mjj', r'$M_{jj} \ (GeV)$', [200., 400., 600., 900., 1200., 1500., 2000., 2750., 3500., 5000.]),
-    'ak4_pt0' : hist.Bin('jetpt',r'Leading AK4 jet $p_{T}$ (GeV)',list(range(0,800,40)) ),
-    'ak4_pt1' : hist.Bin('jetpt',r'Trailing AK4 jet $p_{T}$ (GeV)',list(range(0,800,40)) ),
-    'ak4_eta0' : hist.Bin('jeteta',r'Leading AK4 jet $\eta$', 25, -5, 5),
-    'ak4_eta1' : hist.Bin('jeteta',r'Trailing AK4 jet $\eta$', 25, -5, 5),
-    'ak4_phi0' : hist.Bin('jetphi',r'Leading AK4 jet $\phi$', 25, -np.pi, np.pi),
-    'ak4_phi1' : hist.Bin('jetphi',r'Trailing AK4 jet $\phi$', 25, -np.pi, np.pi),
-    'ht' : hist.Bin("ht", r"$H_{T}$ (GeV)", 50, 0, 4000),
-    'htmiss' : hist.Bin("ht", r"$H_{T}^{miss}$ (GeV)", 80, 0, 800),
+    'mjj' : Bin('mjj', r'$M_{jj} \ (GeV)$', [200., 400., 600., 900., 1200., 1500., 2000., 2750., 3500., 5000.]),
+    'ak4_pt0' : Bin('jetpt',r'Leading AK4 jet $p_{T}$ (GeV)',list(range(0,800,40)) ),
+    'ak4_pt1' : Bin('jetpt',r'Trailing AK4 jet $p_{T}$ (GeV)',list(range(0,800,40)) ),
+    'ak4_eta0' : Bin('jeteta',r'Leading AK4 jet $\eta$', 25, -5, 5),
+    'ak4_eta1' : Bin('jeteta',r'Trailing AK4 jet $\eta$', 25, -5, 5),
+    'ak4_phi0' : Bin('jetphi',r'Leading AK4 jet $\phi$', 25, -np.pi, np.pi),
+    'ak4_phi1' : Bin('jetphi',r'Trailing AK4 jet $\phi$', 25, -np.pi, np.pi),
+    'ht' : Bin("ht", r"$H_{T}$ (GeV)", 50, 0, 4000),
+    'htmiss' : Bin("ht", r"$H_{T}^{miss}$ (GeV)", 80, 0, 800),
+    'ak4_nef0' : Bin("frac", r"Leading Jet Neutral EM Fraction", 50, 0, 1),
+    'ak4_nhf0' : Bin("frac", r"Leading Jet Neutral Hadron Fraction", 50, 0, 1),
+    'ak4_cef0' : Bin("frac", r"Leading Jet Charged EM Fraction", 50, 0, 1),
+    'ak4_chf0' : Bin("frac", r"Leading Jet Charged Hadron Fraction", 50, 0, 1),
+    'ak4_nef1' : Bin("frac", r"Trailing Jet Neutral EM Fraction", 50, 0, 1),
+    'ak4_nhf1' : Bin("frac", r"Trailing Jet Neutral Hadron Fraction", 50, 0, 1),
+    'ak4_cef1' : Bin("frac", r"Trailing Jet Charged EM Fraction", 50, 0, 1),
+    'ak4_chf1' : Bin("frac", r"Trailing Jet Charged Hadron Fraction", 50, 0, 1),
 }
 
 def parse_cli():
