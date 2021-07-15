@@ -545,18 +545,22 @@ class RebalanceExecutor():
             # Here's how we'll determine the prescale weights:
             # For each event, determine the trigger with the highest threshold for which it is passing
             # Read the PS values as a function of (run,lumi) for that trigger
-            trigger_to_look = decide_trigger_for_prescale(trigger_results)
-            ps_weight, trigger_thresh_for_ps_weight = compute_prescale_weight(trigger_to_look, run[0], luminosityBlock[0])
-            
-            weight_trigger_prescale[0] = ps_weight
-            trigger_thresh_for_ps[0] = trigger_thresh_for_ps_weight
-
-            # Look for the second smallest prescale weight for events passing multiple triggers.
-            second_lowest_ps = determine_second_lowest_prescale(trigger_results, trigger_thresh_for_ps_weight, run[0], luminosityBlock[0])
-            if second_lowest_ps == -1:
-                second_to_first_prescale_ratio[0] = -1
-            else:
-                second_to_first_prescale_ratio[0] = second_lowest_ps / ps_weight
+            try:
+                trigger_to_look = decide_trigger_for_prescale(trigger_results)
+                ps_weight, trigger_thresh_for_ps_weight = compute_prescale_weight(trigger_to_look, run[0], luminosityBlock[0])
+                
+                weight_trigger_prescale[0] = ps_weight
+                trigger_thresh_for_ps[0] = trigger_thresh_for_ps_weight
+    
+                # Look for the second smallest prescale weight for events passing multiple triggers.
+                second_lowest_ps = determine_second_lowest_prescale(trigger_results, trigger_thresh_for_ps_weight, run[0], luminosityBlock[0])
+                if second_lowest_ps == -1:
+                    second_to_first_prescale_ratio[0] = -1
+                else:
+                    second_to_first_prescale_ratio[0] = second_lowest_ps / ps_weight
+            except IndexError:
+                print(f'WARNING: Prescale weight not found for event {eventnum[0]}, skipping.')
+                continue
     
             # Store the prescale weight for later use
             # If no prescaling was done, weight would be just 1.
