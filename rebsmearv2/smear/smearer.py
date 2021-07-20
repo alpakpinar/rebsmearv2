@@ -40,6 +40,7 @@ def empty_column_accumulator_float16():
 def get_accumulator(regions):
     dataset_ax = Cat("dataset", "Primary dataset")
     region_ax = Cat("region", "Selection region")
+    trigger_ax = Cat("trigger", "Trigger for prescale")
 
     mjj_ax = Bin("mjj", r"$M_{jj}$ (GeV)", 150, 0, 7500)
     jet_pt_ax = Bin("jetpt", r"$p_{T}$ (GeV)", 100, 0, 1000)
@@ -54,7 +55,6 @@ def get_accumulator(regions):
     mht_ax = Bin("ht", r"$H_{T}$ (GeV)", 80, 0, 800)
     dphi_ax = Bin("dphi", r"$\Delta\phi$", 50, 0, 3.5)
 
-    trigger_ax = Bin("thresh", "Trigger pt threshold", 60, 0, 600)
 
     items = {}
     
@@ -361,11 +361,14 @@ class CoffeaSmearer(processor.ProcessorABC):
                 thresholds = np.concatenate(
                     [df['trigger_thresh_for_ps'] for i in range(self.ntoys)]
                 )
+                trignamefunc = np.vectorize(lambda thresh: f'HLT_PFJet{thresh}')
+
                 thresholds = JaggedArray.fromiter(thresholds).flatten()
-    
-                ezfill('mjj_per_trigger',        mjj=mjj[mask],   thresh=thresholds[mask],   weight=weight[mask] )
-                ezfill('ak4_phi0_per_trigger',   jetphi=diak4.i0.phi[mask].flatten(),   thresh=thresholds[mask],   weight=weight[mask] )
-                ezfill('ak4_phi1_per_trigger',   jetphi=diak4.i1.phi[mask].flatten(),   thresh=thresholds[mask],   weight=weight[mask] )
+                triggers = trignamefunc(thresholds)
+                if len(triggers[mask]) > 0:
+                    ezfill('mjj_per_trigger',        mjj=mjj[mask],   trigger=triggers[mask],   weight=weight[mask] )
+                    ezfill('ak4_phi0_per_trigger',   jetphi=diak4.i0.phi[mask].flatten(),   trigger=triggers[mask],   weight=weight[mask] )
+                    ezfill('ak4_phi1_per_trigger',   jetphi=diak4.i1.phi[mask].flatten(),   trigger=triggers[mask],   weight=weight[mask] )
 
         return output
 
