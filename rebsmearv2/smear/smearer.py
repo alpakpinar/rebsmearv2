@@ -54,6 +54,8 @@ def get_accumulator(regions):
     mht_ax = Bin("ht", r"$H_{T}$ (GeV)", 80, 0, 800)
     dphi_ax = Bin("dphi", r"$\Delta\phi$", 50, 0, 3.5)
 
+    trigger_ax = Bin("thresh", "Trigger pt threshold", 60, 0, 600)
+
     items = {}
     
     items['sumw'] = processor.defaultdict_accumulator(float)
@@ -80,7 +82,12 @@ def get_accumulator(regions):
     items["ht"] = Hist("Counts", dataset_ax, region_ax, ht_ax)
     items["htmiss"] = Hist("Counts", dataset_ax, region_ax, mht_ax)
 
+    items['mjj_per_trigger'] = Hist("Counts", dataset_ax, region_ax, mjj_ax, trigger_ax)
+    items['ak4_phi0_per_trigger'] = Hist("Counts", dataset_ax, region_ax, jet_phi_ax, trigger_ax)
+    items['ak4_phi1_per_trigger'] = Hist("Counts", dataset_ax, region_ax, jet_phi_ax, trigger_ax)
+
     items['high_ps_events'] = processor.defaultdict_accumulator(empty_column_accumulator_float16)
+
 
     for region in regions:
         if region == "inclusive":
@@ -348,6 +355,17 @@ class CoffeaSmearer(processor.ProcessorABC):
             ezfill('ht',       ht=ht[mask],          weight=weight[mask] )
             ezfill('htmiss',   ht=htmiss[mask],      weight=weight[mask] )
             ezfill('dphijm',   dphi=dphijm[mask],    weight=weight[mask] )
+
+            if region != 'inclusive':
+                # Save histograms per trigger threshold
+                thresholds = np.concatenate(
+                    [df['trigger_thresh_for_ps'] for i in range(self.ntoys)]
+                )
+                thresholds = JaggedArray.fromiter(thresholds).flatten()
+    
+                ezfill('mjj_per_trigger',        mjj=mjj[mask],   thresh=thresholds[mask],   weight=weight[mask] )
+                ezfill('ak4_phi0_per_trigger',   jetphi=diak4.i0.phi[mask].flatten(),   thresh=thresholds[mask],   weight=weight[mask] )
+                ezfill('ak4_phi1_per_trigger',   jetphi=diak4.i1.phi[mask].flatten(),   thresh=thresholds[mask],   weight=weight[mask] )
 
         return output
 
