@@ -54,7 +54,7 @@ def files_from_eos(regex):
     :rtype: dict
     '''
     topdir = '/eos/uscms/store/user/aakpinar/nanopost'
-    tag = 'ULv8_05Feb21_rebsmear_v2'
+    tag = 'ULv8_05Feb21_rebsmear_v3'
     fileset = find_files_eos(pjoin(topdir, tag), regex)
     
     return fileset
